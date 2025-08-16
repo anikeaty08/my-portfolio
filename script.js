@@ -1,14 +1,10 @@
-// This script handles the automatic scrolling for skills and projects.
-
+// Main script for scrollers and mobile menu toggle
 document.addEventListener('DOMContentLoaded', () => {
+    // ===== SCROLLERS FOR SKILLS & PROJECTS =====
     const scrollers = document.querySelectorAll(".scroller");
 
-    // If a user hasn't opted in for reduced motion, add the animation
+    // Only add animation if user hasn't opted for reduced motion
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        addAnimation();
-    }
-
-    function addAnimation() {
         scrollers.forEach((scroller) => {
             // Make the scroller clickable on mobile
             scroller.setAttribute("tabindex", 0);
@@ -16,13 +12,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const scrollerInner = scroller.querySelector(".scroller__inner");
             const scrollerContent = Array.from(scrollerInner.children);
 
-            // For each item in the scroller, clone it and add it to the end
+            // Clone each item and append it for continuous scrolling
             scrollerContent.forEach((item) => {
                 const duplicatedItem = item.cloneNode(true);
-                // This is for accessibility, to hide the duplicated content from screen readers
                 duplicatedItem.setAttribute("aria-hidden", true);
                 scrollerInner.appendChild(duplicatedItem);
             });
+        });
+    }
+
+    // ===== MOBILE MENU TOGGLE =====
+    const btn = document.querySelector("button.md\\:hidden");
+    const menu = document.getElementById("mobile-menu");
+
+    if (btn && menu) {
+        btn.addEventListener("click", () => {
+            menu.classList.toggle("hidden");
         });
     }
 });
