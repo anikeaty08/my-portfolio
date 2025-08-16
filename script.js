@@ -22,12 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===== MOBILE MENU TOGGLE =====
-    const btn = document.querySelector("button.md\\:hidden");
+    const btn = document.getElementById("mobile-btn");
     const menu = document.getElementById("mobile-menu");
 
     if (btn && menu) {
-        btn.addEventListener("click", () => {
-            menu.classList.toggle("hidden");
-        });
-    }
+    btn.addEventListener("click", () => {
+        menu.classList.toggle("hidden");
+      });
+   }
 });
