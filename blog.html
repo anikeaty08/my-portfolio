@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog - Anikeat's Portfolio</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter for body, Playfair Display for headings -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .font-display {
+            font-family: 'Playfair Display', serif;
+        }
+    </style>
+
+</head>
+<body class="bg-gradient-to-br from-green-50 to-emerald-100 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header / Navigation -->
+    <header class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        <nav class="flex justify-between items-center">
+            <!-- Logo-->
+            <a href="index.html" class="text-2xl font-bold text-slate-900">
+                <img src="logo.png" alt="Anikeat's Logo" width="48" height="48" style="filter: invert(55%) sepia(35%) saturate(1500%) hue-rotate(120deg) brightness(90%) contrast(95%);">
+            </a>
+            <!-- Desktop Navigation Links -->
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="index.html" class="inline-block text-slate-600 hover:text-slate-900 transition-transform duration-300 transform hover:-translate-y-0.5">Home</a>
+                <a href="about.html" class="inline-block text-slate-600 hover:text-slate-900 transition-transform duration-300 transform hover:-translate-y-0.5">About</a>
+                <a href="skills.html" class="inline-block text-slate-600 hover:text-slate-900 transition-transform duration-300 transform hover:-translate-y-0.5">Skills</a>
+                <a href="projects.html" class="inline-block text-slate-600 hover:text-slate-900 transition-transform duration-300 transform hover:-translate-y-0.5">Projects</a>
+                <a href="blog.html" class="inline-block text-teal-600 font-semibold transition-transform duration-300 transform hover:-translate-y-0.5">Blog</a>
+            </div>
+            
+            <!-- Contact Button -->
+            <a href="mailto:anikeatyadav84@gmail.com" class="hidden md:inline-block bg-teal-600 text-white font-medium py-2 px-5 rounded-lg shadow-md hover:bg-teal-700 transition-all duration-300">
+                Hire Me
+            </a>
+
+            <!-- Mobile Menu Button (optional, for future use) -->
+            <button class="md:hidden text-slate-900">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+        </nav>
+    </header>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-grow flex items-center justify-center">
+        <!-- Blog Page Content -->
+        <main class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl sm:text-5xl font-display font-bold text-slate-900 mb-4">Coming Soon</h1>
+            <p class="text-slate-600 max-w-2xl mx-auto">
+                I'm currently working on creating some exciting content for this blog. Stay tuned for articles about my projects, tech deep-dives, and my journey in the world of AI and web development!
+            </p>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white/30 backdrop-blur-sm mt-auto">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <!-- Column 1: Brand -->
+                <div class="col-span-1 text-center md:text-left">
+                    <h3 class="text-2xl font-display font-bold text-slate-900 mb-4">Anikeat</h3>
+                    <p class="text-slate-600">Exploring the intersection of code and creativity.</p>
+                </div>
+                <!-- Column 2: Quick Links -->
+                <div>
+                    <h4 class="font-semibold text-slate-800 mb-4">Quick Links</h4>
+                    <ul class="space-y-2">
+                        <li><a href="index.html" class="text-slate-600 hover:text-teal-700">Home</a></li>
+                        <li><a href="about.html" class="text-slate-600 hover:text-teal-700">About</a></li>
+                        <li><a href="projects.html" class="text-slate-600 hover:text-teal-700">Projects</a></li>
+                        <li><a href="blog.html" class="text-slate-600 hover:text-teal-700">Blog</a></li>
+                    </ul>
+                </div>
+                <!-- Column 3: Social Media -->
+                <div>
+                    <h4 class="font-semibold text-slate-800 mb-4">Connect</h4>
+                    <ul class="space-y-2">
+                        <li><a href="https://github.com/anikeaty08" class="text-slate-600 hover:text-teal-700">GitHub</a></li>
+                        <li><a href="#" class="text-slate-600 hover:text-teal-700">LinkedIn</a></li>
+                        <li><a href="https://instagram.com/aniket.y08" class="text-slate-600 hover:text-teal-700">Instagram</a></li>
+                        <li><a href="#" class="text-slate-600 hover:text-teal-700">Twitter / X</a></li>
+                    </ul>
+                </div>
+                <!-- Column 4: Contact -->
+                <div>
+                    <h4 class="font-semibold text-slate-800 mb-4">Get in Touch</h4>
+                    <p class="text-slate-600">Have a question or want to work together?</p>
+                    <a href="mailto:anikeatyadav84@gmail.com" class="text-teal-600 hover:text-teal-800 font-medium">anikeatyadav84@gmail.com</a>
+                </div>
+            </div>
+            <div class="mt-12 border-t border-slate-300 pt-8 text-center text-slate-500">
+                <p>&copy; 2025 Anikeat. All Rights Reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Custom JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>

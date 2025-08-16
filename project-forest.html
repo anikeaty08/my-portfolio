@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forest Canopy Prediction - Anikeat's Portfolio</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter for body, Playfair Display for headings -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .font-display {
+            font-family: 'Playfair Display', serif;
+        }
+    </style>
+
+</head>
+<body class="bg-gradient-to-br from-green-50 to-emerald-100 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-grow">
+        <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+            <div class="max-w-4xl mx-auto">
+                
+                <!-- Back to Projects Link -->
+                <div class="mb-8">
+                    <a href="projects.html" class="text-teal-600 hover:text-teal-800 font-semibold">&larr; Back to Projects</a>
+                </div>
+
+                <!-- Project Header -->
+                <h1 class="text-4xl sm:text-5xl font-display font-bold text-slate-900 mb-4">Forest Canopy Prediction</h1>
+                <div class="flex flex-wrap gap-2 mb-8">
+                    <span class="bg-teal-100 text-teal-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Python</span>
+                    <span class="bg-teal-100 text-teal-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Machine Learning</span>
+                    <span class="bg-teal-100 text-teal-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">TensorFlow</span>
+                </div>
+
+                <!-- Project Image -->
+                <img src="https://placehold.co/1200x600/10B981/FFFFFF?text=Forest+Canopy+Prediction" alt="Forest Prediction Project Main Image" class="w-full h-auto rounded-lg shadow-lg mb-12">
+
+                <!-- Project Details -->
+                <div class="bg-white/50 p-8 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-4">Project Overview</h2>
+                    <p class="text-slate-600 mb-6">This project leverages the power of machine learning and satellite imagery to address critical environmental challenges. By analyzing vast datasets of satellite photos, the model can accurately identify and predict changes in forest canopy density, helping to monitor deforestation, track reforestation efforts, and assess overall forest health. This tool provides valuable insights for environmental agencies and conservation groups.</p>
+
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">Key Features</h3>
+                    <ul class="list-disc list-inside text-slate-600 space-y-2 mb-6">
+                        <li>Automated processing of high-resolution satellite imagery.</li>
+                        <li>A deep learning model (CNN) trained to classify forest density.</li>
+                        <li>Data visualization dashboard to display trends and predictions over time.</li>
+                        <li>API for integrating the prediction model with other environmental monitoring tools.</li>
+                    </ul>
+
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">My Contribution</h3>
+                    <p class="text-slate-600 mb-6">In this project, I was responsible for the core machine learning pipeline. My work involved sourcing and pre-processing the satellite image data, which included cleaning, augmenting, and labeling thousands of images. I then designed, trained, and fine-tuned the convolutional neural network (CNN) using TensorFlow to achieve high accuracy in canopy prediction. I also developed scripts for data analysis and contributed to the backend logic for the visualization dashboard.</p>
+                    
+                    <div class="mt-8 flex gap-4">
+                        <a href="#" target="_blank" class="inline-block bg-teal-600 text-white font-medium py-3 px-6 rounded-lg shadow-lg hover:bg-teal-700 transform hover:-translate-y-1 transition-all duration-300">
+                            Live Demo
+                        </a>
+                        <a href="#" target="_blank" class="inline-block bg-slate-700 text-white font-medium py-3 px-6 rounded-lg shadow-lg hover:bg-slate-800 transform hover:-translate-y-1 transition-all duration-300">
+                            View Code
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Simple Footer -->
+    <footer class="py-6 text-center">
+        <p class="text-slate-500">&copy; 2025 Anikeat. All Rights Reserved.</p>
+    </footer>
+
+</body>
+</html>
