@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Me - Anikeat's Portfolio</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter for body, Playfair Display for headings -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .font-display {
+            font-family: 'Playfair Display', serif;
+        }
+    </style>
+
+</head>
+<body class="bg-gradient-to-br from-green-50 to-emerald-100 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-grow">
+        <!-- About Page Content -->
+        <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+            <div class="max-w-6xl mx-auto">
+                
+                <!-- Back to Home Link -->
+                <div class="mb-12 text-left">
+                    <a href="index.html" class="text-teal-600 hover:text-teal-800 font-semibold">&larr; Back to Home</a>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-12 items-center">
+                    <!-- Left Column: Image -->
+                    <div class="md:col-span-1 flex justify-center">
+                         <div class="relative w-72 h-98 sm:w-80 sm:h-80">
+                            <div class="absolute inset-0 border-4 border-teal-500 blob-shape"></div>
+                            <div class="absolute inset-4 sm:inset-6 overflow-hidden blob-shape">
+                             <img 
+                                    src="profillepic.jpg"
+                                    alt="Portrait of Anikeat" 
+                                    onerror="this.onerror=null;this.src='https://placehold.co/500x500/e2e8f0/47569?text=Anikeat';"
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Text Content -->
+                    <div class="md:col-span-2 bg-white/50 p-8 rounded-lg shadow-md">
+                        <h2 class="text-3xl font-display font-bold text-slate-800 mb-4">About Me</h2>
+                        <p class="text-slate-600 mb-6">
+                            Hi, I’m Anikeat Yadav. Based in the tech hub of Bengaluru, I’m currently in my second year pursuing a B.E. in Artificial Intelligence & Machine Learning at BMS Institute of Technology & Management. For me, technology isn’t just a subject—it’s something I truly enjoy exploring. I see it as a playground for creativity and a way to build solutions that can actually make a difference. I’m motivated by curiosity, the thrill of learning something new, and the challenge of solving problems in unique ways. <br> My goal is to grow into an AI/ML engineer and work on projects that connect innovation with real-world problem-solving. I want to contribute to technology that doesn’t just work but also creates a positive impact on people’s lives.
+                        </p>
+                        
+                        <h3 class="text-2xl font-display font-bold text-slate-800 mt-8 mb-4">Beyond Coding</h3>
+                        <p class="text-slate-600">
+                            Outside of my professional interests, I love travelling—discovering new places, meeting different people, and experiencing cultures always excites me. I also enjoy listening to music, cooking, and reading books, which help me relax and keep me inspired. These simple joys bring balance to my life and give me fresh perspectives that shape who I am.
+                        </p>
+
+                        <div class="mt-8 pt-6 border-t border-teal-200">
+                            <div class="flex justify-center space-x-4">
+                                <!-- Mail -->
+                                <a href="mailto:anikeatyadav84@gmail.com" class="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-800"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                                </a>
+                                <!-- GitHub -->
+                                <a href="https://github.com/anikeaty08" class="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-800"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                                </a>
+                                <!-- LinkedIn -->
+                                <a href="#" class="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-800"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                                </a>
+                                <!-- Instagram -->
+                                <a href="https://instagram.com/aniket.y08" class="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-800"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                                </a>
+                                <!-- X (Twitter) -->
+                                <a href="#" class="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-800"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Simple Footer -->
+    <footer class="py-6 text-center mt-auto">
+        <p class="text-slate-500">&copy; 2025 Anikeat. All Rights Reserved.</p>
+    </footer>
+
+</body>
+</html>
