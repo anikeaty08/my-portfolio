@@ -1,0 +1,117 @@
+.section {
+  padding: var(--space-8) 0;
+}
+
+.head {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: var(--text-2xl);
+  letter-spacing: -0.02em;
+}
+
+.sub {
+  margin: 0;
+  color: var(--muted);
+  max-width: 70ch;
+  font-size: var(--text-m);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+.card {
+  border-radius: var(--radius-l);
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.44);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+  transition: transform var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out);
+  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: var(--hairline-2);
+}
+
+.openOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: inherit;
+}
+
+.openOverlay:focus-visible {
+  outline: 3px solid rgba(18, 18, 18, 0.85);
+  outline-offset: 4px;
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--text-xl);
+  letter-spacing: -0.02em;
+  max-width: 38ch;
+}
+
+.date {
+  font-size: var(--text-s);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.excerpt {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-l);
+  max-width: 72ch;
+}
+
+.readMore {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-s);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  position: relative;
+  z-index: 2;
+}
+
+.arrow {
+  display: inline-block;
+  transform: translateY(-1px);
+}
+
+@media (min-width: 980px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
+  .excerpt {
+    font-size: var(--text-m);
+  }
+}

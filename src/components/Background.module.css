@@ -1,0 +1,90 @@
+.wrap {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cursorGlow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+      520px 320px at var(--cursor-x, 22%) var(--cursor-y, 18%),
+      rgba(18, 18, 18, 0.11),
+      transparent 62%
+    ),
+    radial-gradient(420px 260px at 78% 26%, rgba(18, 18, 18, 0.07), transparent 65%);
+  opacity: 0.9;
+}
+
+.shapeA,
+.shapeB {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(calc(var(--blur) * 1.1));
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+}
+
+.shapeA {
+  width: min(540px, 52vw);
+  height: min(540px, 52vw);
+  left: -12%;
+  top: 18%;
+  background: radial-gradient(circle at 30% 30%, rgba(184, 255, 61, 0.75), rgba(184, 255, 61, 0));
+  animation: driftA 12s var(--ease-out) infinite alternate;
+}
+
+.shapeB {
+  width: min(620px, 56vw);
+  height: min(420px, 44vw);
+  right: -14%;
+  top: -10%;
+  background: radial-gradient(circle at 35% 45%, rgba(255, 77, 46, 0.62), rgba(255, 77, 46, 0));
+  animation: driftB 14s var(--ease-out) infinite alternate;
+}
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(18, 18, 18, 0.035) 0px,
+    rgba(18, 18, 18, 0.035) 1px,
+    transparent 3px
+  );
+  background-size: 100% 6px;
+  opacity: 0.25;
+  mask-image: radial-gradient(80% 60% at 50% 0%, rgba(0, 0, 0, 0.8), transparent 65%);
+}
+
+@keyframes driftA {
+  from {
+    transform: translate3d(0, 0, 0) rotate(-6deg);
+  }
+  to {
+    transform: translate3d(48px, -28px, 0) rotate(10deg);
+  }
+}
+
+@keyframes driftB {
+  from {
+    transform: translate3d(0, 0, 0) rotate(10deg);
+  }
+  to {
+    transform: translate3d(-44px, 34px, 0) rotate(-6deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shapeA,
+  .shapeB {
+    animation: none;
+  }
+}
+
+html[data-motion="reduced"] .shapeA,
+html[data-motion="reduced"] .shapeB {
+  animation: none;
+}
+
