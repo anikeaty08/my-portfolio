@@ -134,6 +134,15 @@
   border: 1px solid rgba(18, 18, 18, 0.12);
 }
 
+.shotImg {
+  border-radius: calc(var(--radius-m) - 6px);
+  height: 180px;
+  width: 100%;
+  object-fit: cover;
+  display: block;
+  border: 1px solid rgba(18, 18, 18, 0.12);
+}
+
 .caption {
   margin-top: var(--space-2);
   font-size: var(--text-s);
@@ -166,4 +175,3 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-

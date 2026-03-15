@@ -13,7 +13,7 @@ export function Skills(props: { groups: Record<string, readonly string[]> }) {
         if (!data || cancelled) return;
         if (data.skills && typeof data.skills === "object") {
           const obj = data.skills as Record<string, string[]>;
-          if (Object.keys(obj).length > 0) setLiveGroups(obj);
+          setLiveGroups(obj);
         }
       })
       .catch(() => {

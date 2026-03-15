@@ -16,6 +16,8 @@ export type Project = {
   role: string;
   tech: string[];
   links: { live?: string; github?: string };
+  coverImage?: string;
+  screenshots?: { src: string; caption?: string }[];
   caseStudy?: {
     problem: string;
     constraints: string[];
@@ -87,7 +89,11 @@ export const resumeSnapshot = {
   ],
 } as const;
 
-export const projects: Project[] = [
+// Projects are fetched from `/api/site/projects` (MongoDB) and managed in `/admin`.
+export const projects: Project[] = [];
+
+// Kept only as reference during development; the UI should not rely on this.
+export const projectsStatic: Project[] = [
   {
     slug: "polychat",
     title: "PolyChat — Privacy‑First Web3 Messaging",
@@ -305,7 +311,11 @@ export const experience: ExperienceItem[] = [
   },
 ];
 
-export const skills = {
+// Skills are fetched from `/api/site/skills` (MongoDB) and managed in `/admin`.
+export const skills = {} as const;
+
+// Kept only as reference during development; the UI should not rely on this.
+export const skillsStatic = {
   Frontend: ["React", "Next.js", "TypeScript", "Accessibility", "CSS systems", "Motion"],
   Backend: ["Node.js", "Python", "FastAPI", "MongoDB", "Vector DBs (Qdrant)", "Auth"],
   DevOps: ["Vercel deploys", "Docker basics", "GitHub Actions", "Linux/WSL", "Env management"],

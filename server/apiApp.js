@@ -111,6 +111,18 @@ const contactSchema = new mongoose.Schema(
 
 const ContactMessage = mongoose.models.ContactMessage ?? mongoose.model("ContactMessage", contactSchema);
 
+const assetSchema = new mongoose.Schema(
+  {
+    filename: { type: String, required: true, trim: true },
+    contentType: { type: String, required: true, trim: true },
+    data: { type: Buffer, required: true },
+    createdAt: { type: Date, required: true },
+  },
+  { timestamps: false },
+);
+
+const Asset = mongoose.models.Asset ?? mongoose.model("Asset", assetSchema);
+
 const siteSchema = new mongoose.Schema(
   {
     key: { type: String, required: true, unique: true },
@@ -141,6 +153,16 @@ const projectSchema = z
         github: z.string().url().optional(),
       })
       .default({}),
+    coverImage: z.string().url().optional(),
+    screenshots: z
+      .array(
+        z.object({
+          src: z.string().url(),
+          caption: z.string().min(1).max(140).optional(),
+        }),
+      )
+      .max(8)
+      .optional(),
     // Optional case study; if omitted the UI will still show the card but the case study modal should be disabled.
     caseStudy: z
       .object({
@@ -189,7 +211,8 @@ export function createApiApp() {
     }),
   );
   app.use(helmet({ crossOriginResourcePolicy: false }));
-  app.use(express.json({ limit: "200kb" }));
+  // Keep this reasonably small, but allow admin screenshot uploads (small images only).
+  app.use(express.json({ limit: "2mb" }));
   app.use(
     rateLimit({
       windowMs: 60_000,
@@ -288,6 +311,20 @@ export function createApiApp() {
     res.status(201).json({ ok: true });
   });
 
+  app.get("/api/assets/:id", async (req, res) => {
+    if (!MONGODB_URI) return res.status(500).json({ error: "missing_mongodb_uri" });
+    if (!dbReady) await ensureDb();
+    if (!dbReady) return res.status(503).json({ error: "db_unavailable" });
+    const id = req.params.id;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: "invalid_id" });
+    const asset = await Asset.findById(id, { contentType: 1, data: 1, filename: 1 }).lean();
+    if (!asset) return res.status(404).json({ error: "not_found" });
+    res.setHeader("Content-Type", asset.contentType);
+    res.setHeader("Content-Disposition", `inline; filename="${asset.filename.replaceAll('"', "")}"`);
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.end(asset.data);
+  });
+
   app.post("/api/admin/login", async (req, res) => {
     const schema = z.object({ email: z.string().email(), password: z.string().min(6) });
     const parsed = schema.safeParse(req.body);
@@ -301,6 +338,34 @@ export function createApiApp() {
 
     const token = jwt.sign({ sub: ADMIN_EMAIL }, JWT_SECRET, { expiresIn: "7d" });
     res.json({ token });
+  });
+
+  app.post("/api/admin/assets", requireAdmin, async (req, res) => {
+    if (!MONGODB_URI) return res.status(500).json({ error: "missing_mongodb_uri" });
+    if (!dbReady) await ensureDb();
+    if (!dbReady) return res.status(503).json({ error: "db_unavailable" });
+
+    const schema = z.object({
+      filename: z.string().trim().min(1).max(120),
+      contentType: z.string().trim().min(3).max(80),
+      dataUrl: z.string().min(20),
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "invalid_body" });
+
+    const { filename, contentType, dataUrl } = parsed.data;
+    if (!contentType.startsWith("image/")) return res.status(400).json({ error: "invalid_type" });
+
+    const prefix = `data:${contentType};base64,`;
+    if (!dataUrl.startsWith(prefix)) return res.status(400).json({ error: "invalid_data_url" });
+
+    const b64 = dataUrl.slice(prefix.length);
+    const buf = Buffer.from(b64, "base64");
+    if (buf.length === 0) return res.status(400).json({ error: "empty_upload" });
+    if (buf.length > 900_000) return res.status(413).json({ error: "file_too_large" });
+
+    const created = await Asset.create({ filename, contentType, data: buf, createdAt: new Date() });
+    res.status(201).json({ id: String(created._id), url: `/api/assets/${created._id}` });
   });
 
   app.get("/api/admin/posts", requireAdmin, async (req, res) => {
@@ -409,4 +474,3 @@ export function createApiApp() {
 
   return { app };
 }
-

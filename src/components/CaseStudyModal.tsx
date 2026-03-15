@@ -24,6 +24,7 @@ export function CaseStudyModal(props: { project: Project | null; onClose: () => 
   if (!open || !props.project) return null;
   const p = props.project;
   const cs = p.caseStudy;
+  const shots = p.screenshots?.length ? p.screenshots : p.coverImage ? [{ src: p.coverImage, caption: "Cover" }] : [];
 
   return (
     <div
@@ -91,16 +92,27 @@ export function CaseStudyModal(props: { project: Project | null; onClose: () => 
 
           <section className={styles.block} aria-label="Screenshots">
             <h3 className={styles.h3}>Screenshots</h3>
-            <div className={styles.shots} aria-label="Screenshot placeholders">
-              <figure className={styles.shot}>
-                <div className={styles.shotInner} />
-                <figcaption className={styles.caption}>Dashboard view (placeholder)</figcaption>
-              </figure>
-              <figure className={styles.shot}>
-                <div className={styles.shotInner} />
-                <figcaption className={styles.caption}>Detail view (placeholder)</figcaption>
-              </figure>
-            </div>
+            {shots.length ? (
+              <div className={styles.shots} aria-label="Project screenshots">
+                {shots.map((s) => (
+                  <figure key={s.src} className={styles.shot}>
+                    <img className={styles.shotImg} src={s.src} alt={s.caption ? `${p.title}: ${s.caption}` : `${p.title} screenshot`} loading="lazy" />
+                    {s.caption ? <figcaption className={styles.caption}>{s.caption}</figcaption> : null}
+                  </figure>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.shots} aria-label="Screenshot placeholders">
+                <figure className={styles.shot}>
+                  <div className={styles.shotInner} />
+                  <figcaption className={styles.caption}>Add screenshots from /admin</figcaption>
+                </figure>
+                <figure className={styles.shot}>
+                  <div className={styles.shotInner} />
+                  <figcaption className={styles.caption}>Add screenshots from /admin</figcaption>
+                </figure>
+              </div>
+            )}
           </section>
 
           <div className={styles.footer}>

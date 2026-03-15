@@ -61,7 +61,7 @@ export function App() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data || cancelled) return;
-        if (Array.isArray(data.projects) && data.projects.length > 0) setProjectList(data.projects);
+        if (Array.isArray(data.projects)) setProjectList(data.projects);
       })
       .catch(() => {
         // ignore; fallback to static projects

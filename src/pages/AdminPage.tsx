@@ -77,6 +77,8 @@ export function AdminPage() {
   const [projTechText, setProjTechText] = useState("");
   const [projLive, setProjLive] = useState("");
   const [projGithub, setProjGithub] = useState("");
+  const [projCoverImage, setProjCoverImage] = useState("");
+  const [projScreenshots, setProjScreenshots] = useState<{ src: string; caption?: string }[]>([]);
   const [projHasCaseStudy, setProjHasCaseStudy] = useState(false);
   const [projProblem, setProjProblem] = useState("");
   const [projConstraintsText, setProjConstraintsText] = useState("");
@@ -121,6 +123,8 @@ export function AdminPage() {
     setProjTechText("");
     setProjLive("");
     setProjGithub("");
+    setProjCoverImage("");
+    setProjScreenshots([]);
     setProjHasCaseStudy(false);
     setProjProblem("");
     setProjConstraintsText("");
@@ -205,6 +209,8 @@ export function AdminPage() {
     setProjTechText(textFromList(activeProject.tech));
     setProjLive(activeProject.links?.live ?? "");
     setProjGithub(activeProject.links?.github ?? "");
+    setProjCoverImage(activeProject.coverImage ?? "");
+    setProjScreenshots(Array.isArray(activeProject.screenshots) ? activeProject.screenshots : []);
     const cs = activeProject.caseStudy;
     setProjHasCaseStudy(Boolean(cs));
     setProjProblem(cs?.problem ?? "");
@@ -212,6 +218,26 @@ export function AdminPage() {
     setProjApproachText(textFromList(cs?.approach ?? []));
     setProjResultsText(textFromList(cs?.results ?? []));
   }, [activeProject]);
+
+  async function fileToDataUrl(file: File) {
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("read_failed"));
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadImage(file: File) {
+    if (!token) throw new Error("missing_token");
+    const dataUrl = await fileToDataUrl(file);
+    const res = await api<{ id: string; url: string }>("/api/admin/assets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ filename: file.name, contentType: file.type || "image/png", dataUrl }),
+    });
+    return res.url;
+  }
 
   async function onSaveSite() {
     if (!token) return;
@@ -391,6 +417,8 @@ export function AdminPage() {
         ...(projLive.trim() ? { live: projLive.trim() } : {}),
         ...(projGithub.trim() ? { github: projGithub.trim() } : {}),
       },
+      ...(projCoverImage.trim() ? { coverImage: projCoverImage.trim() } : {}),
+      ...(projScreenshots.length ? { screenshots: projScreenshots.slice(0, 8) } : {}),
       ...(projHasCaseStudy
         ? {
             caseStudy: {
@@ -737,6 +765,99 @@ export function AdminPage() {
                   GitHub URL (optional)
                   <input className={styles.input} value={projGithub} onChange={(e) => setProjGithub(e.target.value)} />
                 </label>
+                <label className={styles.label}>
+                  Cover image URL (optional)
+                  <input className={styles.input} value={projCoverImage} onChange={(e) => setProjCoverImage(e.target.value)} />
+                </label>
+                <label className={styles.label}>
+                  Upload cover image (small screenshot)
+                  <input
+                    className={styles.input}
+                    type="file"
+                    accept="image/*"
+                    disabled={loading}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setLoading(true);
+                      setError(null);
+                      try {
+                        const url = await uploadImage(file);
+                        setProjCoverImage(url);
+                      } catch {
+                        setError("Cover upload failed. Keep it small (under ~900KB) and try again.");
+                      } finally {
+                        setLoading(false);
+                        e.currentTarget.value = "";
+                      }
+                    }}
+                  />
+                </label>
+
+                <div className={styles.row}>
+                  <h3 className={styles.h3}>Screenshots</h3>
+                  <input
+                    className={styles.input}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={loading}
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files ?? []);
+                      if (files.length === 0) return;
+                      setLoading(true);
+                      setError(null);
+                      try {
+                        const next = [];
+                        for (const f of files) {
+                          const url = await uploadImage(f);
+                          next.push({ src: url, caption: f.name.replace(/\.[^.]+$/, "") });
+                        }
+                        setProjScreenshots((prev) => [...prev, ...next].slice(0, 8));
+                      } catch {
+                        setError("Screenshot upload failed. Keep images small (under ~900KB) and try again.");
+                      } finally {
+                        setLoading(false);
+                        e.currentTarget.value = "";
+                      }
+                    }}
+                  />
+                </div>
+
+                {projScreenshots.length ? (
+                  <div className={styles.thumbList} aria-label="Uploaded screenshots">
+                    {projScreenshots.map((s, idx) => (
+                      <div key={`${s.src}-${idx}`} className={styles.thumbRow}>
+                        <div className={styles.thumb} aria-hidden="true">
+                          <img className={styles.thumbImg} src={s.src} alt="" />
+                        </div>
+                        <input
+                          className={styles.input}
+                          value={s.caption ?? ""}
+                          placeholder="Caption (optional)"
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setProjScreenshots((prev) => {
+                              const copy = prev.slice();
+                              copy[idx] = { ...copy[idx], caption: v || undefined };
+                              return copy;
+                            });
+                          }}
+                        />
+                        <button
+                          className={styles.danger}
+                          type="button"
+                          disabled={loading}
+                          onClick={() => setProjScreenshots((prev) => prev.filter((_, i) => i !== idx))}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={styles.mini}>No screenshots yet. Upload 1 to 2 small images for the case study modal.</p>
+                )}
                 <label className={styles.mini}>
                   <input
                     type="checkbox"
