@@ -808,7 +808,7 @@ export function AdminPage() {
                       setLoading(true);
                       setError(null);
                       try {
-                        const next = [];
+                        const next: { src: string; caption?: string }[] = [];
                         for (const f of files) {
                           const url = await uploadImage(f);
                           next.push({ src: url, caption: f.name.replace(/\.[^.]+$/, "") });

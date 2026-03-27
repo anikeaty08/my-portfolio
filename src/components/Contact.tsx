@@ -1,3 +1,4 @@
+import emailjs from "@emailjs/browser";
 import { useMemo, useState } from "react";
 import type { SocialLinks } from "../content";
 import { Reveal } from "./Reveal";
@@ -6,6 +7,10 @@ import styles from "./Contact.module.css";
 function isEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
+
+const emailServiceId = import.meta.env.VITE_EMAILJS_SERVICE_ID?.trim() ?? "";
+const emailTemplateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID?.trim() ?? "";
+const emailPublicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY?.trim() ?? "";
 
 export function Contact(props: { socials: SocialLinks }) {
   const [name, setName] = useState("");
@@ -35,15 +40,38 @@ export function Contact(props: { socials: SocialLinks }) {
     setSending(true);
     setSubmitError(null);
     try {
+      const emailConfigured = Boolean(emailServiceId && emailTemplateId && emailPublicKey);
+      let emailSent = false;
+      let messageSaved = false;
+
+      if (emailConfigured) {
+        await emailjs.send(
+          emailServiceId,
+          emailTemplateId,
+          { name: name.trim(), email: email.trim(), message: message.trim() },
+          { publicKey: emailPublicKey },
+        );
+        emailSent = true;
+      }
+
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, message }),
       });
-      if (!res.ok) throw new Error("bad_response");
+      if (res.ok) {
+        messageSaved = true;
+      } else if (!emailSent) {
+        throw new Error("bad_response");
+      }
+
+      if (emailConfigured && !emailSent) {
+        throw new Error("email_failed");
+      }
+
       setSuccess(true);
     } catch {
-      setSubmitError("Backend is not responding. You can email me directly instead.");
+      setSubmitError("Delivery failed. Please email me directly instead.");
     } finally {
       setSending(false);
     }
@@ -111,7 +139,7 @@ export function Contact(props: { socials: SocialLinks }) {
                 <div>
                   <div className={styles.successTitle}>Message queued.</div>
                   <p className={styles.successBody}>
-                    Saved. I will read it and reply to your email.
+                    Delivered successfully. I will read it and reply to your email.
                   </p>
                 </div>
                 <button
