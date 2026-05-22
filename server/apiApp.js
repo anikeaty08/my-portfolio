@@ -139,6 +139,11 @@ const skillsSchema = z
   .record(z.string().min(1), z.array(z.string().min(1)).max(60))
   .refine((v) => Object.keys(v).length <= 30, { message: "too_many_groups" });
 
+const assetUrlSchema = z.union([
+  z.string().url(),
+  z.string().regex(/^\/api\/assets\/[a-f\d]{24}$/i, "invalid_asset_path"),
+]);
+
 const projectSchema = z
   .object({
     slug: z.string().min(2).max(60),
@@ -153,11 +158,11 @@ const projectSchema = z
         github: z.string().url().optional(),
       })
       .default({}),
-    coverImage: z.string().url().optional(),
+    coverImage: assetUrlSchema.optional(),
     screenshots: z
       .array(
         z.object({
-          src: z.string().url(),
+          src: assetUrlSchema,
           caption: z.string().min(1).max(140).optional(),
         }),
       )
