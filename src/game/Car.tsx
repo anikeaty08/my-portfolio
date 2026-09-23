@@ -122,7 +122,7 @@ export function Car({ data }: { data: WorldData }) {
   const tmp = useMemo(() => ({ q: new THREE.Quaternion(), yaw: new THREE.Quaternion(), spin: new THREE.Quaternion(), up: new THREE.Vector3() }), []);
   const lastReset = useRef(0);
   const flippedFor = useRef(0);
-  const zoom = useRef(1);
+  const zoom = useRef(window.innerWidth < window.innerHeight ? 1.35 : 1); // portrait phones see more from further back
 
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {

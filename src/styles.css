@@ -729,20 +729,39 @@ kbd {
 /* ------------------------------------------------------------ small screens */
 
 @media (max-width: 720px) {
-  .brand span:not(.brand__mark) {
+  .brand {
+    padding: 0.35rem;
+  }
+  .brand > div {
     display: none;
+  }
+  .topbar__actions {
+    gap: 0.35rem;
+  }
+  .topbar__actions .icon-btn {
+    width: 34px;
+    height: 34px;
   }
   .topbar__actions .btn:not(.btn--primary) {
     display: none;
   }
   .quick {
-    top: calc(var(--gutter) + 62px);
+    top: calc(var(--gutter) + 58px);
     bottom: auto;
     right: var(--gutter);
     left: var(--gutter);
-    justify-content: center;
+    justify-content: space-between;
+    padding: 0.25rem;
   }
   .quick span {
+    display: none;
+  }
+  .quick button {
+    flex: 1;
+    padding: 0.45rem 0.2rem;
+    font-size: 0.78rem;
+  }
+  .minimap {
     display: none;
   }
   .hint {
@@ -751,6 +770,7 @@ kbd {
     width: calc(100% - 2 * var(--gutter));
     bottom: 200px;
     border-radius: 16px;
+    font-size: 0.78rem;
   }
   .prompt {
     bottom: 200px;
