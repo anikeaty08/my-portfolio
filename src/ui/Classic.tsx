@@ -8,10 +8,15 @@ export function Classic({ canDrive }: { canDrive: boolean }) {
     <div className="classic">
       <header className="classic__top">
         <span className="brand__mark">AY</span>
-        {canDrive && (
+        {canDrive ? (
           <button className="btn btn--primary" onClick={() => setState({ classic: false })}>
             ← Back to the island
           </button>
+        ) : (
+          <p className="notice">
+            This site is normally a 3D island you drive around, but your browser has 3D (WebGL) turned off. Restarting
+            the browser usually brings it back.
+          </p>
         )}
       </header>
 

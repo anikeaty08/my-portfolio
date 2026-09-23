@@ -794,3 +794,15 @@ kbd {
     transition-duration: 0.001s !important;
   }
 }
+
+.notice {
+  margin: 0 0 0 1rem;
+  max-width: 34rem;
+  padding: 0.6rem 0.9rem;
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  background: #fff4d6;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--ink) !important;
+}
