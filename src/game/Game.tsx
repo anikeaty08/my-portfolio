@@ -90,9 +90,9 @@ export function Game({ onLost }: { onLost: () => void }) {
   return (
     <Canvas
       className="scene"
-      shadows
+      shadows={quality.shadows}
       dpr={dpr}
-      gl={{ antialias: true, powerPreference: "high-performance" }}
+      gl={{ antialias: quality.antialias, powerPreference: "high-performance" }}
       camera={{ fov: 38, near: 0.5, far: 400, position: [30, 30, 30] }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;

@@ -6,6 +6,8 @@ export type ZoneId = string; // "project:<slug>" | "about" | "skills" | "contact
 type State = {
   started: boolean;
   classic: boolean;
+  /** Why the classic site is showing when the visitor didn't choose it. */
+  fallback: null | "no-webgl" | "gpu-lost";
   /** Zone pad the car is currently parked on. */
   zone: ZoneId | null;
   /** Zone whose panel is open. */
@@ -19,6 +21,7 @@ type State = {
 let state: State = {
   started: false,
   classic: false,
+  fallback: null,
   zone: null,
   panel: null,
   night: false,

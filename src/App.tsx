@@ -29,7 +29,8 @@ export default function App() {
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    if (!webgl || q.has("classic")) setState({ started: true, classic: true });
+    if (!webgl) setState({ started: true, classic: true, fallback: "no-webgl" });
+    else if (q.has("classic")) setState({ started: true, classic: true });
     else if (q.has("start")) setState({ started: true });
     // Dev-only: ?autodrive=<throttle>,<steer> holds the controls, for testing handling in a headless browser.
     if (import.meta.env.DEV && q.has("autodrive")) {
@@ -71,7 +72,7 @@ export default function App() {
           <Game
             onLost={() => {
               setWebgl(false);
-              setState({ started: true, classic: true });
+              setState({ started: true, classic: true, fallback: "gpu-lost" });
             }}
           />
         </Suspense>

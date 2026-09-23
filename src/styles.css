@@ -796,6 +796,9 @@ kbd {
 }
 
 .notice {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
   margin: 0 0 0 1rem;
   max-width: 34rem;
   padding: 0.6rem 0.9rem;
@@ -804,5 +807,9 @@ kbd {
   background: #fff4d6;
   font-size: 0.82rem;
   line-height: 1.4;
+  color: var(--ink) !important;
+}
+.notice p {
+  margin: 0;
   color: var(--ink) !important;
 }

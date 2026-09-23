@@ -1,9 +1,11 @@
 import { person, projects } from "../content";
-import { setState } from "../store";
+import { retryLite } from "../game/quality";
+import { setState, useStore } from "../store";
 import { AboutBody, Chips, ContactBody, SkillsBody } from "./Panels";
 
 /** The whole portfolio as a normal page — for recruiters in a hurry and devices without WebGL. */
 export function Classic({ canDrive }: { canDrive: boolean }) {
+  const fallback = useStore((s) => s.fallback);
   return (
     <div className="classic">
       <header className="classic__top">
@@ -13,10 +15,22 @@ export function Classic({ canDrive }: { canDrive: boolean }) {
             ← Back to the island
           </button>
         ) : (
-          <p className="notice">
-            This site is normally a 3D island you drive around, but your browser has 3D (WebGL) turned off. Restarting
-            the browser usually brings it back.
-          </p>
+          <div className="notice">
+            {fallback === "gpu-lost" ? (
+              <p>
+                This site is a 3D island you drive around, but your graphics card gave up while drawing it. The lighter
+                version usually works.
+              </p>
+            ) : (
+              <p>
+                This site is a 3D island you drive around, but your browser says 3D (WebGL) is turned off or blocked.
+                Fully close and reopen the browser, then try again.
+              </p>
+            )}
+            <button className="btn btn--small btn--primary" onClick={retryLite}>
+              Try 3D again (lighter)
+            </button>
+          </div>
         )}
       </header>
 
