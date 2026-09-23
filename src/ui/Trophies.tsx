@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ACHIEVEMENTS, SKINS, isUnlocked, progress, setSkin, unlockedCount } from "../game/achievements";
-import { race } from "../game/Gameplay";
+import { race } from "../game/race";
 import { setState, useStore } from "../store";
 import { Lock, Trophy } from "./icons";
 

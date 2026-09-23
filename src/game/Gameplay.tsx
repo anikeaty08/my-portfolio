@@ -6,8 +6,7 @@ import { collectEgg, recordLap, unlock } from "./achievements";
 import { telemetry } from "./controls";
 import { props, resetGroup, type WorldData } from "./World";
 
-/** Live race state, read by the HUD every frame. */
-export const race = { running: false, start: 0, current: 0, last: null as number | null, best: null as number | null, next: 1 };
+import { race } from "./race";
 
 const up = new THREE.Vector3();
 const q = new THREE.Quaternion();
@@ -55,6 +54,7 @@ export function Gameplay({ data }: { data: WorldData }) {
   const bowl = useRef({ phase: "idle" as "idle" | "rolling" | "settling", since: 0 });
   const slow = useRef(0);
   const wasAtFinish = useRef(true); // the car spawns on the line
+  const lastPos = useRef({ x: telemetry.x, z: telemetry.z });
 
   useFrame((state) => {
     const now = state.clock.elapsedTime;
@@ -65,6 +65,13 @@ export function Gameplay({ data }: { data: WorldData }) {
     // Leaving the start/finish zone starts the clock; re-entering it after cp:1 → cp:2 → cp:3 stops it.
     const inside = (z: { pos: number[]; radius: number }) => Math.hypot(telemetry.x - z.pos[0], telemetry.z - z.pos[2]) < z.radius;
     const cps = checkpoints.current;
+    // A reset or teleport jumps the car; that can't count as driving a lap.
+    const jumped = Math.hypot(telemetry.x - lastPos.current.x, telemetry.z - lastPos.current.z) > 4;
+    lastPos.current = { x: telemetry.x, z: telemetry.z };
+    if (jumped) {
+      race.running = false;
+      wasAtFinish.current = inside(cps[0] ?? { pos: [1e9, 0, 0], radius: 0 });
+    }
     if (cps.length === 4) {
       const atFinish = inside(cps[0]);
       const entered = atFinish && !wasAtFinish.current;

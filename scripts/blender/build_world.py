@@ -589,7 +589,7 @@ holes = [cyl(0.07, 0.1, (ball_at.x + dx, ball_at.y - 0.5, GROUND + 0.56 + dz), D
          for dx, dz in ((0.12, 0.2), (-0.1, 0.24), (0.0, 0.36))]  # finger holes
 ball = join_as([ball] + holes, "dyn_ball")
 dynamic.append({"node": "dyn_ball", "shape": "ball", "group": "ball", "mass": 3.0, "radius": 0.55})
-zones.append({"id": "bowling", "kind": "bowling", "pos": t3(head + bowl_dir * 0.9), "radius": 2.6})
+zones.append({"id": "bowling", "kind": "bowling", "pos": t3(bowl_dir * (lane_start - 2.2)), "radius": 2.2})  # behind the ball
 
 # ---------------------------------------------------------------- crate stack (south-east, visible from spawn)
 

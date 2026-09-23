@@ -40,6 +40,7 @@ export default function App() {
     }
     if (import.meta.env.DEV && q.get("panel")) setState({ panel: q.get("panel") });
     if (import.meta.env.DEV && q.has("night")) setState({ night: true });
+    if (import.meta.env.DEV && q.get("tp")) setState({ teleport: { key: 1, zone: q.get("tp")! } });
   }, [webgl]);
 
   useEffect(() => {
