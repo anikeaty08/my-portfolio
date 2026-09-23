@@ -16,6 +16,16 @@ type State = {
   sound: boolean;
   /** Bumped to request a car reset. */
   resetTick: number;
+  /** Teleport request: zone id to drive to. */
+  teleport: { key: number; zone: string } | null;
+  toast: { key: number; title: string; body: string } | null;
+  achievements: number;
+  eggs: number;
+  skin: string;
+  /** Konami easter egg: low gravity. */
+  moon: boolean;
+  /** Achievements drawer open. */
+  trophies: boolean;
 };
 
 let state: State = {
@@ -27,6 +37,13 @@ let state: State = {
   night: false,
   sound: false,
   resetTick: 0,
+  teleport: null,
+  toast: null,
+  achievements: 0,
+  eggs: 0,
+  skin: "orange",
+  moon: false,
+  trophies: false,
 };
 const listeners = new Set<() => void>();
 

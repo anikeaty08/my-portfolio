@@ -34,3 +34,17 @@ export const Reset = () => (
     <path d="M3 4v5h5" />
   </svg>
 );
+
+export const Trophy = () => (
+  <svg {...base} aria-hidden>
+    <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4z" />
+    <path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3" />
+  </svg>
+);
+
+export const Lock = () => (
+  <svg {...base} width={13} height={13} aria-hidden>
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+  </svg>
+);

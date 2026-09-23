@@ -40,6 +40,7 @@ colliders = []  # static
 dynamic = []  # props with rigid bodies
 zones = []
 animated = []  # names of nodes three.js animates
+clearings = []  # (blender x, y, radius): no trees, no grass
 
 
 def t3(v):
@@ -177,6 +178,7 @@ def floor_text(body, center, m, size, facing=VIEW):
     bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
     o.location = (center[0], center[1], GROUND + 0.03)
     o.rotation_euler = (0, 0, ang)
+    clearings.append((center[0], center[1], o.dimensions.x / 2 + 0.4))  # keep grass off painted labels
     return o
 
 
@@ -265,7 +267,7 @@ def letters(word, center, size, facing, prefix, m):
         o.location = (p.x, p.y, GROUND + o.dimensions.y / 2 + 0.01)
         o.rotation_euler = (math.radians(90), 0, ang)
         o.name = f"{prefix}{i}"
-        dynamic.append({"node": o.name, "shape": "box", "mass": 1.2,
+        dynamic.append({"node": o.name, "shape": "box", "group": "letter", "mass": 1.2,
                         "half": [o.dimensions.x / 2, o.dimensions.z / 2, o.dimensions.y / 2]})
     return objs
 
@@ -286,7 +288,7 @@ for i in range(10):
     bpy.ops.object.join()
     bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
     c.name = f"dyn_cone_{i}"
-    dynamic.append({"node": c.name, "shape": "box", "mass": 0.25, "half": [0.35, 0.47, 0.35]})
+    dynamic.append({"node": c.name, "shape": "box", "group": "cone", "mass": 0.25, "half": [0.35, 0.47, 0.35]})
 
 spawn = polar(ROAD_MID, -60)
 spawn_heading = math.radians(-60 + 90)
@@ -377,7 +379,7 @@ for level, count in enumerate((4, 3, 2, 1)):
         bpy.ops.object.join()
         bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
         b.name = f"dyn_block_{k}"
-        dynamic.append({"node": b.name, "shape": "box", "mass": 0.6, "half": [0.6, 0.6, 0.6]})
+        dynamic.append({"node": b.name, "shape": "box", "group": "block", "mass": 0.6, "half": [0.6, 0.6, 0.6]})
         k += 1
 
 # ---------------------------------------------------------------- SOUTH: contact
@@ -471,10 +473,218 @@ def signpost(pos, entries):
 
 signpost(polar(ROAD_OUT + 1.6, -48), [("PROJECTS", 0), ("ABOUT", 90), ("SKILLS", 180), ("CONTACT", 270)])
 
+# ================================================================ playground
+
+
+def clear(x, y, r):
+    clearings.append((x, y, r))
+
+
+# Buildings and zone structures: keep trees and grass off their footprints.
+clear(HX + 1.5, 0, 7.5)
+clear(BX + 2, 0, 5.5)
+clear(BX + 8.5, -5, 3.5)
+clear(AX, AY, 4.2)
+clear(fx, fy, 2.6)
+clear(2.4, CY, 1.5)
+clear(tx, ty, 2.2)
+clear(LX, LY, 2.4)
+
+
+def join_as(objs, name):
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in objs:
+        apply_all_modifiers(o)
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]
+    bpy.ops.object.join()
+    o = bpy.context.active_object
+    bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
+    o.name = name
+    return o
+
+
+def apply_all_modifiers(o):
+    bpy.context.view_layer.objects.active = o
+    for m in list(o.modifiers):
+        bpy.ops.object.modifier_apply(modifier=m.name)
+
+
+# ---------------------------------------------------------------- bowling alley (north-east)
+
+PIN_WHITE = mat("pin_white", "#fbfaf6", 0.35)
+PIN_RED = mat("pin_red", "#d9362b", 0.4)
+LANE = mat("lane", "#d9a86a", 0.45)
+GUTTER = mat("gutter", "#2c2f38", 0.5)
+BALL = mat("ball", "#2446a8", 0.12, 0.2)
+
+BOWL_DEG = 45
+bowl_dir = Vector((math.cos(math.radians(BOWL_DEG)), math.sin(math.radians(BOWL_DEG)), 0))
+bowl_side = Vector((-bowl_dir.y, bowl_dir.x, 0))
+lane_start, lane_end = 19.5, 33.0
+lane_mid = bowl_dir * ((lane_start + lane_end) / 2)
+lane_len = lane_end - lane_start
+rot = math.radians(BOWL_DEG)
+box((lane_len, 3.4, 0.06), (lane_mid.x, lane_mid.y, GROUND + 0.03), LANE, rot_z=rot)
+for k in range(1, 8):  # plank lines
+    off = bowl_side * (-1.7 + k * 3.4 / 8)
+    box((lane_len, 0.02, 0.01), (lane_mid.x + off.x, lane_mid.y + off.y, GROUND + 0.065), mat("plank", "#b98a52", 0.6),
+        rot_z=rot)
+for s in (-1, 1):
+    g = lane_mid + bowl_side * s * 2.05
+    box((lane_len, 0.7, 0.12), (g.x, g.y, GROUND + 0.06), GUTTER, rot_z=rot)
+    rail = lane_mid + bowl_side * s * 2.55
+    box((lane_len, 0.25, 0.35), (rail.x, rail.y, GROUND + 0.17), WOOD, rot_z=rot, bevel=0.04)
+    static_box(Vector((rail.x, rail.y, GROUND + 0.17)), (lane_len, 0.25, 0.35), rot)
+back = bowl_dir * (lane_end + 0.6)
+box((0.5, 6.0, 2.2), (back.x, back.y, GROUND + 1.1), GUTTER, rot_z=rot, bevel=0.05)
+static_box(Vector((back.x, back.y, GROUND + 1.1)), (0.5, 6.0, 2.2), rot)
+sign_at = bowl_dir * (lane_end + 0.3)  # on the lane-facing side of the back wall
+text_mesh("BOWLING", (sign_at.x, sign_at.y, GROUND + 1.25), ORANGE_GLOW, size=0.75, extrude=0.06,
+          rot=(math.radians(90), 0, rot - math.pi / 2))
+arrow_mid = bowl_dir * (lane_start + 3.0)
+for k in (-2, -1, 0, 1, 2):  # aiming arrows, like a real lane
+    a = arrow_mid + bowl_side * (k * 0.55) + bowl_dir * (abs(k) * 0.4)
+    cyl(0.14, 0.02, (a.x, a.y, GROUND + 0.07), PAD, rot=(0, 0, rot), verts=3, r2=0.0)
+floor_text("BOWLING", bowl_dir * (lane_start - 3.0), WHITE, 1.2)
+clear(lane_mid.x, lane_mid.y, 8.5)
+
+
+def make_pin(name, at):
+    profile = [(0.0, 0.0), (0.11, 0.0), (0.16, 0.18), (0.2, 0.36), (0.17, 0.56), (0.1, 0.72), (0.085, 0.82),
+               (0.1, 0.94), (0.08, 1.04), (0.0, 1.08)]
+    bm = bmesh.new()
+    verts = [bm.verts.new((r, 0, z)) for r, z in profile]
+    edges = [bm.edges.new((verts[i], verts[i + 1])) for i in range(len(verts) - 1)]
+    bmesh.ops.spin(bm, geom=verts + edges, cent=(0, 0, 0), axis=(0, 0, 1), angle=math.tau, steps=16,
+                   use_duplicate=False)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.001)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    body = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(body)
+    finish(body, PIN_WHITE, flat=False)
+    stripe1 = cyl(0.103, 0.035, (0, 0, 0.76), PIN_RED, verts=16, smooth=True)
+    stripe2 = cyl(0.093, 0.035, (0, 0, 0.84), PIN_RED, verts=16, smooth=True)
+    pin = join_as([body, stripe1, stripe2], name)
+    pin.location = (at.x, at.y, GROUND + 0.54 + 0.005)
+    dynamic.append({"node": name, "shape": "cyl", "group": "pin", "mass": 0.35, "radius": 0.19, "halfHeight": 0.54})
+
+
+rows = [1, 2, 3, 4]
+head = bowl_dir * (lane_end - 3.6)
+i = 0
+for row, count in enumerate(rows):
+    for j in range(count):
+        at = head + bowl_dir * (row * 0.62) + bowl_side * ((j - (count - 1) / 2) * 0.7)
+        make_pin(f"dyn_pin_{i}", at)
+        i += 1
+
+ball_at = bowl_dir * (lane_start + 1.2)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.55, location=(ball_at.x, ball_at.y, GROUND + 0.56), segments=24,
+                                     ring_count=12)
+ball = finish(bpy.context.active_object, BALL, flat=False)
+holes = [cyl(0.07, 0.1, (ball_at.x + dx, ball_at.y - 0.5, GROUND + 0.56 + dz), DARK, rot=(math.radians(90), 0, 0), verts=8)
+         for dx, dz in ((0.12, 0.2), (-0.1, 0.24), (0.0, 0.36))]  # finger holes
+ball = join_as([ball] + holes, "dyn_ball")
+dynamic.append({"node": "dyn_ball", "shape": "ball", "group": "ball", "mass": 3.0, "radius": 0.55})
+zones.append({"id": "bowling", "kind": "bowling", "pos": t3(head + bowl_dir * 0.9), "radius": 2.6})
+
+# ---------------------------------------------------------------- crate stack (south-east, visible from spawn)
+
+CRATE = mat("crate", "#c98b4b", 0.8)
+CRATE_EDGE = mat("crate_edge", "#8a5a2b", 0.8)
+crate_base = polar(22.5, -22, 0)
+k = 0
+for level, count in enumerate((3, 2, 1)):
+    for j in range(count):
+        off = Vector((0.55 * level + j * 1.1 - 1.1, 0, 0))
+        c = Vector((crate_base.x + off.x, crate_base.y + off.y, GROUND + 0.5 + level * 1.0))
+        parts = [box((1.0, 1.0, 1.0), c, CRATE, bevel=0.03)]
+        for dz in (-0.42, 0.42):
+            parts.append(box((1.04, 1.04, 0.12), (c.x, c.y, c.z + dz), CRATE_EDGE))
+        parts.append(box((1.04, 0.14, 1.04), (c.x, c.y, c.z), CRATE_EDGE, rot=(math.radians(45), 0, 0)))
+        join_as(parts, f"dyn_crate_{k}")
+        dynamic.append({"node": f"dyn_crate_{k}", "shape": "box", "group": "crate", "mass": 0.5, "half": [0.52, 0.52, 0.52]})
+        k += 1
+clear(crate_base.x, crate_base.y, 4)
+
+# ---------------------------------------------------------------- brick wall (south-west)
+
+BRICK_R = mat("brick_red", "#b8452e", 0.85)
+wall_c = polar(22, 215, 0)
+wall_rot = math.radians(215 + 90)
+wall_dir = Vector((math.cos(wall_rot), math.sin(wall_rot), 0))
+k = 0
+for row in range(5):
+    n = 6 if row % 2 == 0 else 5
+    for j in range(n):
+        off = (j - (n - 1) / 2) * 0.92
+        p = wall_c + wall_dir * off
+        b = box((0.9, 0.44, 0.44), (p.x, p.y, GROUND + 0.22 + row * 0.45), BRICK_R, rot_z=wall_rot, bevel=0.02)
+        b.name = f"dyn_brick_{k}"
+        dynamic.append({"node": b.name, "shape": "box", "group": "brick", "mass": 0.3, "half": [0.45, 0.22, 0.22]})
+        k += 1
+floor_text("SMASH IT", wall_c + Vector((math.cos(math.radians(215)), math.sin(math.radians(215)), 0)) * -3.2, WHITE, 0.8)
+clear(wall_c.x, wall_c.y, 4.5)
+
+# ---------------------------------------------------------------- race circuit on the ring road
+
+CHECKER_A = mat("checker_a", "#15161b", 0.6)
+FINISH_DEG = -135  # arch spans the road side-on to the game camera
+checkpoints = [FINISH_DEG, -45, 45, 135]  # counter-clockwise
+for i, deg in enumerate(checkpoints):
+    zones.append({"id": f"cp:{i}", "kind": "checkpoint", "pos": t3(polar(ROAD_MID, deg)), "radius": 3.2})
+fr = math.radians(FINISH_DEG)
+for s in range(8):  # checkered finish line across the road
+    for t in range(2):
+        rr = ROAD_IN + 0.2 + s * (ROAD_OUT - ROAD_IN - 0.4) / 8 + 0.2
+        a = fr + (t - 0.5) * 0.028
+        m = CHECKER_A if (s + t) % 2 == 0 else WHITE
+        box((0.42, 0.42, 0.02), (math.cos(a) * rr, math.sin(a) * rr, GROUND + 0.035), m, rot_z=fr)
+for rr in (ROAD_IN - 0.7, ROAD_OUT + 0.7):  # start arch
+    cyl(0.18, 4.6, (math.cos(fr) * rr, math.sin(fr) * rr, GROUND + 2.3), WHITE, verts=10)
+    static_cyl(Vector((math.cos(fr) * rr, math.sin(fr) * rr, GROUND + 2.3)), 0.25, 4.6)
+banner_mid = polar(ROAD_MID, FINISH_DEG, GROUND + 4.4)
+box((ROAD_OUT - ROAD_IN + 1.8, 0.2, 0.9), banner_mid, CHECKER_A, rot_z=fr, bevel=0.05)
+text_mesh("LAP", (banner_mid.x + math.cos(fr - math.pi / 2) * 0.12, banner_mid.y + math.sin(fr - math.pi / 2) * 0.12,
+                  banner_mid.z - 0.35), ORANGE_GLOW, size=0.6, extrude=0.03, rot=(math.radians(90), 0, fr + 0))
+
+# ---------------------------------------------------------------- hidden golden eggs
+
+GOLD = mat("gold", "#ffcf4a", 0.18, 1.0, emit=0.6)
+egg_spots = [Vector((-2.5, ZONE_R + 6.2, 0)), Vector((LX - 4.5, LY - 2.5, 0)), Vector((HX + 6.2, -5.4, 0))]
+for i, e in enumerate(egg_spots):
+    o = ico(0.3, (e.x, e.y, GROUND + 0.8), GOLD, sub=3, scale=(1, 1, 1.3))
+    for p in o.data.polygons:
+        p.use_smooth = True
+    o.name = f"egg_{i}"
+    animated.append(o.name)
+    zones.append({"id": f"egg:{i}", "kind": "egg", "pos": t3((e.x, e.y, GROUND)), "radius": 1.6})
+    clear(e.x, e.y, 1.5)
+
+# ---------------------------------------------------------------- clouds
+
+CLOUD = mat("cloud", "#ffffff", 0.9)
+for i in range(7):
+    a = random.uniform(0, math.tau)
+    r = random.uniform(10, 45)
+    c = Vector((math.cos(a) * r, math.sin(a) * r, random.uniform(16, 22)))
+    puffs = []
+    for j in range(random.randint(3, 5)):
+        off = Vector((random.uniform(-2.4, 2.4), random.uniform(-1.2, 1.2), random.uniform(-0.3, 0.5)))
+        puffs.append(ico(random.uniform(1.1, 1.9), c + off, CLOUD, sub=1, scale=(1, 1, 0.7)))
+    join_as(puffs, f"cloud_{i}")
+    animated.append(f"cloud_{i}")
+
 # ---------------------------------------------------------------- trees and rocks
 
 
 def blocked(p):
+    for cx, cy, cr in clearings:
+        if (p.x - cx) ** 2 + (p.y - cy) ** 2 < cr * cr:
+            return True
     r = p.length
     ang = math.degrees(math.atan2(p.y, p.x)) % 360
     if ROAD_IN - 2.2 < r < ROAD_OUT + 2.0 or r < 7.5 or r > ISLAND_R - 3:
@@ -517,14 +727,17 @@ while placed < 95 and tries < 6000:
             scale=(1, random.uniform(0.7, 1.2), random.uniform(0.5, 0.8)))
         static_cyl(Vector((p.x, p.y, GROUND + 0.5)), 0.8 * s, 1)
 
+def shore_radii(n=64, radius=ISLAND_R + 4, wobble=0.08, seed=3.0):
+    """Sand outline radius at n evenly spaced three.js angles (theta = atan2(z, x) = -blender angle)."""
+    out = []
+    for i in range(n):
+        a = -i / n * math.tau
+        k = 1 + wobble * noise.noise(Vector((math.cos(a) * 1.4 + seed, math.sin(a) * 1.4, seed)))
+        out.append(round(radius * k, 3))
+    return out
+
+
 # ---------------------------------------------------------------- export world
-
-
-def apply_all_modifiers(o):
-    bpy.context.view_layer.objects.active = o
-    for m in list(o.modifiers):
-        bpy.ops.object.modifier_apply(modifier=m.name)
-
 
 keep = set(animated) | {d["node"] for d in dynamic} | {"col_grass", "col_sand"}
 keep_roots = set()
@@ -559,6 +772,9 @@ meta = {
     "dynamic": dynamic,
     "zones": zones,
     "animated": animated,
+    "roads": {"ringIn": ROAD_IN, "ringOut": ROAD_OUT, "plaza": 6.5, "spokeHalf": 1.7, "spokes": [0, 90, 180, 270]},
+    "clearings": [[round(x, 3), round(-y, 3), r] for x, y, r in clearings],
+    "shore": shore_radii(),
 }
 (OUT / "world.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
 print(f"[world] {len(colliders)} colliders, {len(dynamic)} dynamic props, {len(zones)} zones")

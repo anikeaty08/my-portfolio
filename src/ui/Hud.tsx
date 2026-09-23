@@ -7,6 +7,7 @@ import type { WorldData } from "../game/World";
 import { getState, setState, useStore } from "../store";
 import { Moon, Reset, SoundOff, SoundOn, Sun } from "./icons";
 import { zoneInfo } from "./Panels";
+import { LapTimer, Toast, Trophies } from "./Trophies";
 
 function TopBar() {
   const sound = useStore((s) => s.sound);
@@ -56,15 +57,16 @@ const QUICK: { id: string; label: string }[] = [
   { id: "about", label: "About" },
   { id: "skills", label: "Skills" },
   { id: "contact", label: "Contact" },
+  { id: "bowling", label: "Bowling" },
 ];
 
-/** For visitors who'd rather read than drive. */
+/** Teleports the car next to a zone and opens it — for visitors who'd rather read than drive. */
 function QuickMenu() {
   return (
     <nav className="quick" aria-label="Jump to">
       <span>Jump to</span>
       {QUICK.map((q) => (
-        <button key={q.id} onClick={() => setState({ panel: q.id })}>
+        <button key={q.id} onClick={() => setState({ teleport: { key: Date.now(), zone: q.id }, panel: q.id === "bowling" ? null : q.id })}>
           {q.label}
         </button>
       ))}
@@ -97,7 +99,7 @@ function Hint() {
           <kbd>W</kbd>
           <kbd>A</kbd>
           <kbd>S</kbd>
-          <kbd>D</kbd> drive · <kbd>Space</kbd> brake · <kbd>Shift</kbd> boost · <kbd>R</kbd> reset — roll onto the glowing pads
+          <kbd>D</kbd> drive · <kbd>Space</kbd> brake · <kbd>Shift</kbd> boost · <kbd>H</kbd> horn · drag to look around — roll onto the glowing pads
         </p>
       )}
     </div>
@@ -234,6 +236,9 @@ export function Hud({ data }: { data: WorldData | null }) {
       <TopBar />
       <Hint />
       <ZonePrompt />
+      <Toast />
+      <LapTimer />
+      <Trophies />
       {!quality.touch && <Minimap data={data} />}
       <QuickMenu />
       {quality.touch && <TouchControls />}

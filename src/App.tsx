@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { setSound } from "./audio";
+import { markSeen, trackKonami } from "./game/achievements";
 import { bindKeyboard, input } from "./game/controls";
 import type { WorldData } from "./game/World";
 import { getState, setState, useStore } from "./store";
@@ -48,13 +49,19 @@ export default function App() {
       .catch(() => undefined);
   }, []);
 
+  const panel = useStore((s) => s.panel);
+  useEffect(() => {
+    if (panel) markSeen(panel);
+  }, [panel]);
+
   useEffect(
     () =>
       bindKeyboard((code) => {
         const s = getState();
         if (!s.started || s.classic) return;
+        trackKonami(code);
         if (code === "Enter" && s.zone && !s.panel) setState({ panel: s.zone });
-        else if (code === "Escape") setState({ panel: null });
+        else if (code === "Escape") setState({ panel: null, trophies: false });
         else if (code === "KeyR") setState({ resetTick: s.resetTick + 1 });
         else if (code === "KeyN") setState({ night: !s.night });
         else if (code === "KeyM") {

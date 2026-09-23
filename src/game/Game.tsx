@@ -5,12 +5,15 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useStore } from "../store";
 import { Car } from "./Car";
+import { Effects } from "./Effects";
+import { Gameplay } from "./Gameplay";
+import { Nature } from "./Nature";
 import { telemetry } from "./controls";
 import { quality } from "./quality";
 import { useWorldData, World } from "./World";
 
-const DAY = { sky: new THREE.Color("#a8d8f4"), hemiSky: new THREE.Color("#dff1ff"), hemiGround: new THREE.Color("#8fbf6a"), hemi: 1.35, sun: 2.6, sunColor: new THREE.Color("#fff1dc"), water: new THREE.Color("#2f9ed1") };
-const NIGHT = { sky: new THREE.Color("#16224d"), hemiSky: new THREE.Color("#6f86d6"), hemiGround: new THREE.Color("#23402f"), hemi: 0.95, sun: 0.75, sunColor: new THREE.Color("#a9bcff"), water: new THREE.Color("#12325c") };
+const DAY = { sky: new THREE.Color("#a8d8f4"), hemiSky: new THREE.Color("#dff1ff"), hemiGround: new THREE.Color("#8fbf6a"), hemi: 1.35, sun: 2.6, sunColor: new THREE.Color("#fff1dc") };
+const NIGHT = { sky: new THREE.Color("#16224d"), hemiSky: new THREE.Color("#6f86d6"), hemiGround: new THREE.Color("#23402f"), hemi: 0.95, sun: 0.75, sunColor: new THREE.Color("#a9bcff") };
 
 /** Sun + sky that ease between day and night, with the shadow camera following the car. */
 function Environment() {
@@ -18,7 +21,6 @@ function Environment() {
   const { scene } = useThree();
   const sun = useRef<THREE.DirectionalLight>(null);
   const hemi = useRef<THREE.HemisphereLight>(null);
-  const water = useRef<THREE.MeshStandardMaterial>(null);
   const mix = useRef(0);
   const colors = useMemo(() => ({ sky: new THREE.Color() }), []);
 
@@ -45,7 +47,6 @@ function Environment() {
       sun.current.target.position.set(telemetry.x, 0, telemetry.z);
       sun.current.target.updateMatrixWorld();
     }
-    if (water.current) water.current.color.copy(DAY.water).lerp(NIGHT.water, m);
   });
 
   const S = 28;
@@ -66,27 +67,31 @@ function Environment() {
         shadow-camera-near={1}
         shadow-camera-far={90}
       />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.35, 0]} receiveShadow>
-        <circleGeometry args={[400, 64]} />
-        <meshStandardMaterial ref={water} color={DAY.water} roughness={0.25} metalness={0.05} />
-      </mesh>
     </>
   );
 }
 
 function Level() {
   const data = useWorldData();
+  const started = useStore((s) => s.started);
+  const moon = useStore((s) => s.moon);
+  const debug = new URLSearchParams(window.location.search).has("debug");
   return (
     <>
-      <World data={data} />
-      <Car data={data} />
+      <Nature data={data} />
+      {/* Paused until the visitor starts, so the letters of the name drop in on cue. */}
+      <Physics gravity={[0, moon ? -5 : -20, 0]} paused={!started} debug={debug}>
+        <World data={data} />
+        <Car data={data} />
+        <Gameplay data={data} />
+      </Physics>
+      <Effects />
     </>
   );
 }
 
 export function Game({ onLost }: { onLost: () => void }) {
   const [dpr, setDpr] = useState(Math.min(window.devicePixelRatio, quality.maxDpr));
-  const debug = new URLSearchParams(window.location.search).has("debug");
   return (
     <Canvas
       className="scene"
@@ -107,9 +112,7 @@ export function Game({ onLost }: { onLost: () => void }) {
       <AdaptiveDpr pixelated={false} />
       <Environment />
       <Suspense fallback={null}>
-        <Physics gravity={[0, -20, 0]} debug={debug}>
-          <Level />
-        </Physics>
+        <Level />
       </Suspense>
     </Canvas>
   );

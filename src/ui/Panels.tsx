@@ -18,6 +18,7 @@ export function zoneInfo(id: ZoneId): { title: string; kicker: string } {
       skills: { title: "Skills", kicker: "The billboard" },
       contact: { title: "Contact", kicker: "The mailbox" },
       lighthouse: { title: "Lights out?", kicker: "The lighthouse" },
+      bowling: { title: "Bowling", kicker: "Lane one" },
     } as Record<string, { title: string; kicker: string }>
   )[id] ?? { title: id, kicker: "" };
 }
@@ -182,6 +183,15 @@ function LighthouseBody() {
   );
 }
 
+function BowlingBody() {
+  return (
+    <>
+      <p className="lead">Nudge the ball down the lane with your bumper — gently, or it jumps the gutter. All ten pins earns a trophy.</p>
+      <p className="muted">The pins reset themselves a few seconds after every roll.</p>
+    </>
+  );
+}
+
 function body(id: ZoneId): ReactNode {
   if (id.startsWith("project:")) {
     const p = projects.find((q) => q.slug === id.slice(8));
@@ -191,6 +201,7 @@ function body(id: ZoneId): ReactNode {
   if (id === "skills") return <SkillsBody />;
   if (id === "contact") return <ContactBody />;
   if (id === "lighthouse") return <LighthouseBody />;
+  if (id === "bowling") return <BowlingBody />;
   return null;
 }
 

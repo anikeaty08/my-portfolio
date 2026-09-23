@@ -3,10 +3,13 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { CuboidCollider, RigidBody, useBeforePhysicsStep, useRapier, type RapierRigidBody } from "@react-three/rapier";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { bump } from "../audio";
-import { getState, setState } from "../store";
-import { input, telemetry } from "./controls";
-import type { WorldData } from "./World";
+import { bump, horn, splash } from "../audio";
+import { getState, setState, useStore } from "../store";
+import { SKINS, unlock } from "./achievements";
+import { input, pollGamepad, telemetry } from "./controls";
+import { effects } from "./Effects";
+import { teleportTarget } from "./Gameplay";
+import { INTERACTIVE, type WorldData } from "./World";
 
 type VehicleController = ReturnType<ReturnType<typeof useRapier>["world"]["createVehicleController"]>;
 
@@ -20,6 +23,7 @@ const WHEELS = [
 const WHEEL_RADIUS = 0.36;
 const REST = 0.32;
 
+// Checked with a headless Rapier simulation: 0→8.6 m/s in 1 s, capped at 17 m/s, reverse 7 m/s.
 const TUNE = {
   mass: 8,
   engine: 18, // per wheel
@@ -34,33 +38,47 @@ const TUNE = {
 };
 
 /** Camera sits up and behind at a fixed isometric-ish angle, like a toy diorama. */
-const CAM_OFFSET = new THREE.Vector3(13, 13.5, 13);
+const CAM_DIST = 22.5;
+const CAM_PITCH = 0.64; // radians above the horizon
+const CAM_YAW = Math.PI / 4; // looking from +X/+Z
 
 export function Car({ data }: { data: WorldData }) {
   const { scene } = useGLTF("/world/car.glb");
   const { world } = useRapier();
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const body = useRef<RapierRigidBody>(null);
   const controller = useRef<VehicleController | null>(null);
   const wheelRefs = useRef<(THREE.Object3D | null)[]>([]);
   const headlights = useRef<THREE.Group>(null);
+  const skin = useStore((s) => s.skin);
 
-  const { chassis, wheels } = useMemo(() => {
+  const { chassis, wheels, paint } = useMemo(() => {
     const chassis = scene.getObjectByName("body")!.clone();
     const wheel = scene.getObjectByName("wheel")!.clone();
     wheel.position.set(0, 0, 0);
+    chassis.position.set(0, 0, 0);
+    let paint: THREE.MeshStandardMaterial | null = null;
+    // The body paint gets its own material so skins can recolor it.
+    const swap = (mat: THREE.Material) => (mat.name === "orange" ? (paint ??= (mat as THREE.MeshStandardMaterial).clone()) : mat);
     for (const o of [chassis, wheel]) {
       o.traverse((m) => {
-        if ((m as THREE.Mesh).isMesh) {
-          m.castShadow = true;
-          m.receiveShadow = true;
-        }
+        const mesh = m as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.material = Array.isArray(mesh.material) ? mesh.material.map(swap) : swap(mesh.material);
       });
     }
-    chassis.position.set(0, 0, 0);
     const wheels = WHEELS.map(() => wheel.clone());
-    return { chassis, wheels };
+    return { chassis, wheels, paint: paint as THREE.MeshStandardMaterial | null };
   }, [scene]);
+
+  useEffect(() => {
+    if (!paint) return;
+    paint.color.set(SKINS.find((s) => s.id === skin)?.color ?? SKINS[0].color);
+    paint.metalness = skin === "gold" ? 0.9 : 0.1;
+    paint.roughness = skin === "gold" ? 0.25 : 0.45;
+  }, [skin, paint]);
 
   const spawn = useMemo(() => {
     const [x, y, z] = data.spawn.pos;
@@ -95,10 +113,12 @@ export function Car({ data }: { data: WorldData }) {
   useBeforePhysicsStep((w) => {
     const v = controller.current;
     if (!v) return;
+    if (pollGamepad()) honk();
     const speed = v.currentVehicleSpeed();
-    const panelOpen = getState().panel !== null;
-    const throttle = panelOpen ? 0 : input.throttle;
-    const steerInput = panelOpen ? 0 : input.steer;
+    const s = getState();
+    const locked = s.panel !== null || !s.started;
+    const throttle = locked ? 0 : input.throttle;
+    const steerInput = locked ? 0 : input.steer;
 
     const t = Math.min(1, Math.abs(speed) / TUNE.maxSpeed);
     const maxSteer = THREE.MathUtils.lerp(TUNE.steerLow, TUNE.steerHigh, t);
@@ -117,23 +137,40 @@ export function Car({ data }: { data: WorldData }) {
     v.updateVehicle(w.timestep);
   });
 
-  const target = useRef(new THREE.Vector3());
-  const look = useRef(new THREE.Vector3());
-  const tmp = useMemo(() => ({ q: new THREE.Quaternion(), yaw: new THREE.Quaternion(), spin: new THREE.Quaternion(), up: new THREE.Vector3() }), []);
-  const lastReset = useRef(0);
-  const flippedFor = useRef(0);
-  const zoom = useRef(window.innerWidth < window.innerHeight ? 1.35 : 1); // portrait phones see more from further back
-
+  // ---------------------------------------------------------------- camera: drag to orbit, wheel to zoom
+  const cam = useRef({ yaw: CAM_YAW, yawTarget: CAM_YAW, zoom: window.innerWidth < window.innerHeight ? 1.35 : 1, speedZoom: 0 });
   useEffect(() => {
-    const onWheel = (e: WheelEvent) => {
-      if (getState().panel || (e.target as HTMLElement)?.closest?.(".panel, .classic")) return;
-      zoom.current = THREE.MathUtils.clamp(zoom.current * (1 + Math.sign(e.deltaY) * 0.08), 0.55, 1.6);
+    const el = gl.domElement;
+    let dragging: { x: number; id: number } | null = null;
+    const down = (e: PointerEvent) => {
+      if (e.pointerType === "touch") return; // touch is for the joystick
+      dragging = { x: e.clientX, id: e.pointerId };
     };
-    window.addEventListener("wheel", onWheel, { passive: true });
-    return () => window.removeEventListener("wheel", onWheel);
-  }, []);
+    const move = (e: PointerEvent) => {
+      if (!dragging || dragging.id !== e.pointerId) return;
+      cam.current.yawTarget -= (e.clientX - dragging.x) * 0.006;
+      dragging.x = e.clientX;
+    };
+    const up = () => {
+      dragging = null;
+    };
+    const wheel = (e: WheelEvent) => {
+      if (getState().panel || (e.target as HTMLElement)?.closest?.(".panel, .classic, .trophies")) return;
+      cam.current.zoom = THREE.MathUtils.clamp(cam.current.zoom * (1 + Math.sign(e.deltaY) * 0.08), 0.55, 1.7);
+    };
+    el.addEventListener("pointerdown", down);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("wheel", wheel, { passive: true });
+    return () => {
+      el.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("wheel", wheel);
+    };
+  }, [gl]);
 
-  function reset(position = spawn.pos, rotation = spawn.rot) {
+  function place(position: THREE.Vector3, rotation: THREE.Quaternion) {
     const rb = body.current;
     if (!rb) return;
     rb.setTranslation(position, true);
@@ -142,12 +179,42 @@ export function Car({ data }: { data: WorldData }) {
     rb.setAngvel({ x: 0, y: 0, z: 0 }, true);
   }
 
+  function honk() {
+    horn();
+    unlock("horn");
+    effects.honkAt = performance.now();
+  }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "KeyH" && !e.repeat && !(e.target as HTMLElement)?.closest?.("input, textarea")) honk();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const tmp = useMemo(
+    () => ({
+      q: new THREE.Quaternion(),
+      yaw: new THREE.Quaternion(),
+      spin: new THREE.Quaternion(),
+      up: new THREE.Vector3(),
+      fwd: new THREE.Vector3(),
+      target: new THREE.Vector3(),
+      look: new THREE.Vector3(),
+      lookTarget: new THREE.Vector3(),
+      axle: new THREE.Vector3(0, 0, 1),
+    }),
+    [],
+  );
+  const last = useRef({ reset: 0, teleport: 0, flipped: 0, splashed: false });
+
   useFrame((state, delta) => {
     const rb = body.current;
     const v = controller.current;
     if (!rb || !v) return;
     const p = rb.translation();
     const r = rb.rotation();
+    const vel = rb.linvel();
     tmp.q.set(r.x, r.y, r.z, r.w);
 
     // Wheels follow the simulated suspension, steering and spin.
@@ -157,36 +224,59 @@ export function Car({ data }: { data: WorldData }) {
       const susp = v.wheelSuspensionLength(i) ?? REST;
       el.position.set(w.pos.x, w.pos.y - susp, w.pos.z);
       tmp.yaw.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, v.wheelSteering(i) ?? 0);
-      tmp.spin.setFromAxisAngle(new THREE.Vector3(0, 0, 1), -(v.wheelRotation(i) ?? 0));
+      tmp.spin.setFromAxisAngle(tmp.axle, -(v.wheelRotation(i) ?? 0));
       el.quaternion.copy(tmp.yaw).multiply(tmp.spin);
+      const tw = telemetry.wheels[i];
+      const contact = v.wheelContactPoint(i);
+      tw.contact = v.wheelIsInContact(i);
+      if (contact) tw.pos.set(contact.x, contact.y, contact.z);
+      tw.slip = Math.abs(v.wheelSideImpulse(i) ?? 0);
     });
 
-    // Telemetry for sound + minimap.
+    // Telemetry for sound, effects and the minimap.
     const speed = v.currentVehicleSpeed();
     telemetry.speed = speed;
     telemetry.x = p.x;
+    telemetry.y = p.y;
     telemetry.z = p.z;
-    const fwd = new THREE.Vector3(1, 0, 0).applyQuaternion(tmp.q);
-    telemetry.heading = Math.atan2(-fwd.z, fwd.x);
+    telemetry.vx = vel.x;
+    telemetry.vz = vel.z;
+    tmp.fwd.set(1, 0, 0).applyQuaternion(tmp.q);
+    telemetry.heading = Math.atan2(-tmp.fwd.z, tmp.fwd.x);
 
-    // Reset requests, the sea, and getting stuck on the roof.
+    // Reset / teleport requests, the sea, and getting stuck on the roof.
     const s = getState();
-    if (s.resetTick !== lastReset.current) {
-      lastReset.current = s.resetTick;
-      reset();
+    const L = last.current;
+    if (s.resetTick !== L.reset) {
+      L.reset = s.resetTick;
+      place(spawn.pos, spawn.rot);
     }
-    if (p.y < -3) reset();
+    if (s.teleport && s.teleport.key !== L.teleport) {
+      L.teleport = s.teleport.key;
+      const t = teleportTarget(data, s.teleport.zone);
+      if (t) place(t.pos, t.rot);
+    }
+    if (p.y < -0.4 && !L.splashed) {
+      L.splashed = true;
+      splash();
+      unlock("splash");
+      effects.splashAt = { t: state.clock.elapsedTime, x: p.x, z: p.z };
+    }
+    if (p.y < -3) {
+      L.splashed = false;
+      place(spawn.pos, spawn.rot);
+    }
     tmp.up.set(0, 1, 0).applyQuaternion(tmp.q);
-    flippedFor.current = tmp.up.y < 0.35 && Math.abs(speed) < 2 ? flippedFor.current + delta : 0;
-    if (flippedFor.current > 1.2) {
-      flippedFor.current = 0;
-      const yaw = new THREE.Quaternion().setFromAxisAngle(THREE.Object3D.DEFAULT_UP, telemetry.heading);
-      reset(new THREE.Vector3(p.x, p.y + 1.5, p.z), yaw);
+    L.flipped = tmp.up.y < 0.35 && Math.abs(speed) < 2 ? L.flipped + delta : 0;
+    if (L.flipped > 1.2) {
+      L.flipped = 0;
+      place(new THREE.Vector3(p.x, p.y + 1.5, p.z), new THREE.Quaternion().setFromAxisAngle(THREE.Object3D.DEFAULT_UP, telemetry.heading));
     }
 
     // Which pad are we parked on?
     let zone: string | null = null;
     for (const z of data.zones) {
+      if (!INTERACTIVE.includes(z.kind)) continue;
       const dx = p.x - z.pos[0];
       const dz = p.z - z.pos[2];
       if (dx * dx + dz * dz < z.radius * z.radius) {
@@ -194,14 +284,21 @@ export function Car({ data }: { data: WorldData }) {
         break;
       }
     }
-    if (zone !== s.zone) setState({ zone, panel: s.panel && s.panel !== zone ? null : s.panel });
+    // Driving off a pad closes its panel; panels opened from the menu stay open.
+    if (zone !== s.zone) setState({ zone, panel: s.panel && s.panel === s.zone ? null : s.panel });
 
-    // Chase camera.
-    target.current.set(p.x, p.y, p.z).addScaledVector(CAM_OFFSET, zoom.current);
-    const k = 1 - Math.exp(-delta * 4);
-    state.camera.position.lerp(target.current, k);
-    look.current.lerp(new THREE.Vector3(p.x + fwd.x * 1.5, p.y, p.z + fwd.z * 1.5), k);
-    camera.lookAt(look.current);
+    // Chase camera: eases toward the car, leads in the direction of travel, pulls back with speed.
+    const c = cam.current;
+    c.yaw += (c.yawTarget - c.yaw) * (1 - Math.exp(-delta * 6));
+    c.speedZoom += (Math.min(Math.abs(speed) / TUNE.maxSpeed, 1.3) * 0.22 - c.speedZoom) * (1 - Math.exp(-delta * 1.5));
+    const dist = CAM_DIST * c.zoom * (1 + c.speedZoom);
+    tmp.target.set(Math.sin(c.yaw) * Math.cos(CAM_PITCH), Math.sin(CAM_PITCH), Math.cos(c.yaw) * Math.cos(CAM_PITCH)).multiplyScalar(dist);
+    tmp.lookTarget.set(p.x + vel.x * 0.35, p.y, p.z + vel.z * 0.35);
+    tmp.target.add(tmp.lookTarget);
+    const k = 1 - Math.exp(-delta * 5);
+    state.camera.position.lerp(tmp.target, k);
+    tmp.look.lerp(tmp.lookTarget, k);
+    camera.lookAt(tmp.look);
 
     if (headlights.current) headlights.current.visible = s.night;
   });

@@ -1,3 +1,5 @@
+import { Vector3 } from "three";
+
 /**
  * Driver input, merged from keyboard and the on-screen touch controls.
  * Values are read every physics frame; nothing here triggers React renders.
@@ -11,6 +13,7 @@ export const input = {
 
 const keys = new Set<string>();
 const touch = { throttle: 0, steer: 0, brake: false };
+const pad = { throttle: 0, steer: 0, brake: false, boost: false, horn: false };
 
 function recompute() {
   const up = keys.has("KeyW") || keys.has("ArrowUp");
@@ -19,10 +22,10 @@ function recompute() {
   const right = keys.has("KeyD") || keys.has("ArrowRight");
   const kThrottle = (up ? 1 : 0) - (down ? 1 : 0);
   const kSteer = (left ? 1 : 0) - (right ? 1 : 0);
-  input.throttle = kThrottle || touch.throttle;
-  input.steer = kSteer || touch.steer;
-  input.brake = keys.has("Space") || touch.brake;
-  input.boost = keys.has("ShiftLeft") || keys.has("ShiftRight");
+  input.throttle = kThrottle || touch.throttle || pad.throttle;
+  input.steer = kSteer || touch.steer || pad.steer;
+  input.brake = keys.has("Space") || touch.brake || pad.brake;
+  input.boost = keys.has("ShiftLeft") || keys.has("ShiftRight") || pad.boost;
 }
 
 export function setTouch(patch: Partial<typeof touch>) {
@@ -44,9 +47,8 @@ export function bindKeyboard(onKey: (code: string) => void) {
       e.preventDefault();
       keys.add(e.code);
       recompute();
-    } else if (!e.repeat) {
-      onKey(e.code);
     }
+    if (!e.repeat) onKey(e.code);
   };
   const up = (e: KeyboardEvent) => {
     keys.delete(e.code);
@@ -66,5 +68,34 @@ export function bindKeyboard(onKey: (code: string) => void) {
   };
 }
 
-/** Live telemetry from the car, for sound and HUD. */
-export const telemetry = { speed: 0, x: 0, z: 0, heading: 0 };
+/** Live telemetry from the car, for sound, effects and HUD. */
+export const telemetry = {
+  speed: 0,
+  x: 0,
+  y: 0,
+  z: 0,
+  vx: 0,
+  vz: 0,
+  heading: 0,
+  wheels: [0, 1, 2, 3].map(() => ({ contact: false, pos: new Vector3(), slip: 0 })),
+};
+
+/**
+ * Standard-mapping gamepad: left stick steers, RT drives, LT reverses,
+ * A brakes, X boosts, B honks. Returns true on the frame the horn button goes down.
+ */
+let hornWasDown = false;
+export function pollGamepad(): boolean {
+  const gp = navigator.getGamepads?.().find((g) => g && g.mapping === "standard");
+  if (!gp) return false;
+  const dead = (v: number) => (Math.abs(v) < 0.15 ? 0 : v);
+  pad.steer = -dead(gp.axes[0] ?? 0);
+  pad.throttle = (gp.buttons[7]?.value ?? 0) - (gp.buttons[6]?.value ?? 0);
+  pad.brake = Boolean(gp.buttons[0]?.pressed);
+  pad.boost = Boolean(gp.buttons[2]?.pressed);
+  const horn = Boolean(gp.buttons[1]?.pressed);
+  const pressed = horn && !hornWasDown;
+  hornWasDown = horn;
+  recompute();
+  return pressed;
+}
