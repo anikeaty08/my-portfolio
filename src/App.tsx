@@ -1,67 +1,89 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { initScroll, lockScroll } from "./scroll";
-import { setState, useStore } from "./store";
-import { Cursor } from "./ui/Cursor";
-import { Descent } from "./ui/Descent";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { setSound } from "./audio";
+import { bindKeyboard, input } from "./game/controls";
+import type { WorldData } from "./game/World";
+import { getState, setState, useStore } from "./store";
+import { Classic } from "./ui/Classic";
+import { Hud } from "./ui/Hud";
 import { Loader } from "./ui/Loader";
-import { Nav } from "./ui/Nav";
-import { Outro } from "./ui/Outro";
-import { ProjectPanel, Work } from "./ui/Work";
+import { Panel } from "./ui/Panels";
 
-const Scene = lazy(() => import("./three/Scene").then((m) => ({ default: m.Scene })));
+const Game = lazy(() => import("./game/Game").then((m) => ({ default: m.Game })));
 
 function hasWebGL() {
   try {
     const c = document.createElement("canvas");
-    return Boolean(c.getContext("webgl2") || c.getContext("webgl"));
+    const gl = c.getContext("webgl2") || c.getContext("webgl");
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    return Boolean(gl);
   } catch {
     return false;
   }
 }
 
 export default function App() {
-  const entered = useStore((s) => s.entered);
-  const reducedMotion = useMemo(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
+  const classic = useStore((s) => s.classic);
+  const started = useStore((s) => s.started);
   const [webgl, setWebgl] = useState(hasWebGL);
-
-  useEffect(() => initScroll(reducedMotion), [reducedMotion]);
+  const [data, setData] = useState<WorldData | null>(null);
 
   useEffect(() => {
-    lockScroll(!entered);
-    if (entered) return;
-    // ?enter skips the loader, ?y=<px> jumps to a scroll position (handy for screenshots).
     const q = new URLSearchParams(window.location.search);
-    if (q.has("enter") || !webgl) setState({ entered: true });
-  }, [entered, webgl]);
+    if (!webgl || q.has("classic")) setState({ started: true, classic: true });
+    else if (q.has("start")) setState({ started: true });
+    // Dev-only: ?autodrive=<throttle>,<steer> holds the controls, for testing handling in a headless browser.
+    if (import.meta.env.DEV && q.has("autodrive")) {
+      const [t, s] = (q.get("autodrive") || "1,0").split(",").map(Number);
+      Object.assign(input, { throttle: t, steer: s || 0 });
+    }
+    if (import.meta.env.DEV && q.get("panel")) setState({ panel: q.get("panel") });
+    if (import.meta.env.DEV && q.has("night")) setState({ night: true });
+  }, [webgl]);
 
   useEffect(() => {
-    if (!entered) return;
-    const y = Number(new URLSearchParams(window.location.search).get("y"));
-    if (y) window.scrollTo(0, y);
-  }, [entered]);
+    fetch("/world/world.json")
+      .then((r) => r.json())
+      .then(setData)
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(
+    () =>
+      bindKeyboard((code) => {
+        const s = getState();
+        if (!s.started || s.classic) return;
+        if (code === "Enter" && s.zone && !s.panel) setState({ panel: s.zone });
+        else if (code === "Escape") setState({ panel: null });
+        else if (code === "KeyR") setState({ resetTick: s.resetTick + 1 });
+        else if (code === "KeyN") setState({ night: !s.night });
+        else if (code === "KeyM") {
+          setState({ sound: !s.sound });
+          void setSound(!s.sound);
+        }
+      }),
+    [],
+  );
 
   return (
-    <div className={`app ${webgl ? "" : "no-gl"}`}>
+    <>
       {webgl && (
         <Suspense fallback={null}>
-          <Scene
-            reducedMotion={reducedMotion}
+          <Game
             onLost={() => {
               setWebgl(false);
-              setState({ entered: true, active: null });
+              setState({ started: true, classic: true });
             }}
           />
         </Suspense>
       )}
+      {webgl && !classic && started && (
+        <>
+          <Hud data={data} />
+          <Panel />
+        </>
+      )}
       {webgl && <Loader />}
-      <Cursor />
-      <Nav />
-      <main>
-        <Descent />
-        <Work />
-        <Outro />
-      </main>
-      <ProjectPanel />
-    </div>
+      {classic && <Classic canDrive={webgl} />}
+    </>
   );
 }

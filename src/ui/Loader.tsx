@@ -1,56 +1,63 @@
 import { useProgress } from "@react-three/drei";
 import { useEffect, useState } from "react";
 import { setSound } from "../audio";
+import { person } from "../content";
 import { setState, useStore } from "../store";
 
 export function Loader() {
   const { progress, active } = useProgress();
-  const entered = useStore((s) => s.entered);
+  const started = useStore((s) => s.started);
   const [ready, setReady] = useState(false);
   const [gone, setGone] = useState(false);
 
   useEffect(() => {
     if (progress >= 100 && !active) {
-      const t = setTimeout(() => setReady(true), 400);
+      const t = setTimeout(() => setReady(true), 300);
       return () => clearTimeout(t);
     }
   }, [progress, active]);
 
-  // Never trap anyone behind a stuck loader.
   useEffect(() => {
-    const t = setTimeout(() => setReady(true), 12000);
+    const t = setTimeout(() => setReady(true), 15000); // never trap anyone behind a stuck loader
     return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
-    if (!entered) return;
-    const t = setTimeout(() => setGone(true), 1600);
+    if (!started) return;
+    const t = setTimeout(() => setGone(true), 900);
     return () => clearTimeout(t);
-  }, [entered]);
+  }, [started]);
 
   if (gone) return null;
 
-  const enter = (sound: boolean) => {
-    setState({ entered: true, sound });
+  const start = (sound: boolean) => {
+    setState({ started: true, sound });
     if (sound) void setSound(true);
   };
 
   return (
-    <div className={`loader ${entered ? "loader--out" : ""}`} aria-live="polite">
-      <div className="loader__disk" aria-hidden>
-        <span />
-      </div>
-      <p className="mono loader__label">{ready ? "Singularity stable" : "Gravitational collapse"}</p>
-      <p className="loader__pct">{Math.round(progress).toString().padStart(3, "0")}</p>
-      <div className={`loader__actions ${ready ? "is-ready" : ""}`}>
-        <button className="btn btn--solid" onClick={() => enter(true)} disabled={!ready}>
-          Enter with sound
+    <div className={`loader ${started ? "loader--out" : ""}`}>
+      <div className="loader__card">
+        <span className="brand__mark brand__mark--big" aria-hidden>
+          AY
+        </span>
+        <h1>{person.name}</h1>
+        <p className="muted">{person.role} — and this is my island.</p>
+        <div className="loader__bar" aria-hidden>
+          <div style={{ transform: `scaleX(${progress / 100})` }} />
+        </div>
+        <div className="loader__actions">
+          <button className="btn btn--primary" disabled={!ready} onClick={() => start(true)}>
+            {ready ? "Start the engine" : `Loading ${Math.round(progress)}%`}
+          </button>
+          <button className="btn" disabled={!ready} onClick={() => start(false)}>
+            Drive silently
+          </button>
+        </div>
+        <button className="linkish" onClick={() => setState({ started: true, classic: true })}>
+          No time? Open the classic site →
         </button>
-        <button className="btn" onClick={() => enter(false)} disabled={!ready}>
-          Enter silently
-        </button>
       </div>
-      <p className="mono loader__hint">Best on desktop · headphones recommended</p>
     </div>
   );
 }

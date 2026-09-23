@@ -1,17 +1,30 @@
 import { useSyncExternalStore } from "react";
 
-/** Tiny UI store shared by the DOM overlay and the 3D scene. */
+export type ZoneId = string; // "project:<slug>" | "about" | "skills" | "contact" | "lighthouse"
+
+/** Tiny UI store shared by the HTML overlay and the 3D scene. */
 type State = {
-  entered: boolean;
-  /** Project whose world is open (camera flew through its portal). */
-  active: number | null;
-  /** Project centered in the corridor right now. */
-  current: number;
-  hovered: number | null;
+  started: boolean;
+  classic: boolean;
+  /** Zone pad the car is currently parked on. */
+  zone: ZoneId | null;
+  /** Zone whose panel is open. */
+  panel: ZoneId | null;
+  night: boolean;
   sound: boolean;
+  /** Bumped to request a car reset. */
+  resetTick: number;
 };
 
-let state: State = { entered: false, active: null, current: 0, hovered: null, sound: false };
+let state: State = {
+  started: false,
+  classic: false,
+  zone: null,
+  panel: null,
+  night: false,
+  sound: false,
+  resetTick: 0,
+};
 const listeners = new Set<() => void>();
 
 export function setState(patch: Partial<State>) {
