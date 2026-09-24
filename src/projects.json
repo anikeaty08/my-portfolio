@@ -2,19 +2,28 @@
   {
     "slug": "cortex",
     "title": "Cortex",
-    "tagline": "AI desktop assistant",
-    "oneLiner": "Control your Windows desktop with natural language — an installable assistant that turns plain requests into real actions on your machine.",
-    "tech": ["Electron", "LLM agents", "Desktop automation"],
-    "links": {},
+    "tagline": "AI agent for your Windows desktop",
+    "oneLiner": "An AI agent that controls your entire Windows desktop — files, apps, messages and scheduled background jobs — from plain-language requests.",
+    "tech": [
+      "Electron",
+      "LLM agents",
+      "Windows automation"
+    ],
+    "links": {
+      "live": "https://www.cortexpro.info/"
+    },
     "color": "#22d3ee",
     "caseStudy": {
-      "problem": "Everyday desktop work is a chain of small clicks and context switches that a capable agent could do for you.",
+      "problem": "Most of a day on a PC is small, repetitive operations across files, apps and inboxes that a capable agent could handle.",
       "approach": [
-        "Natural-language requests interpreted by an LLM agent",
-        "Agent actions mapped onto real desktop operations",
-        "Packaged and installed as a native Windows desktop app"
+        "Desktop agent: operates apps and organizes files on request",
+        "Social agent: drafts replies in your style and handles messaging tasks",
+        "Background agent: runs jobs unattended, like overnight project backups",
+        "Everyday automations: form filling, calendar events from messages, scheduled uploads"
       ],
-      "results": ["Runs as an installed Windows application"]
+      "results": [
+        "Shipped as a downloadable Windows app at cortexpro.info"
+      ]
     }
   },
   {
@@ -22,7 +31,12 @@
     "title": "commit-orchestra",
     "tagline": "Strict AI-agent Git CLI",
     "oneLiner": "An agent reviews your changes, blocks unsafe commits and secrets, writes the commit message, pushes a branch and opens the pull request.",
-    "tech": ["TypeScript", "Node.js", "GitHub API", "npm + PyPI"],
+    "tech": [
+      "TypeScript",
+      "Node.js",
+      "GitHub API",
+      "npm + PyPI"
+    ],
     "links": {
       "github": "https://github.com/anikeaty08/orchestra-agent",
       "npm": "https://www.npmjs.com/package/commit-orchestra",
@@ -47,8 +61,15 @@
     "title": "HireHunt",
     "tagline": "Programmable job-search framework",
     "oneLiner": "Aggregates 10+ job sources — Naukri, LinkedIn, Indeed, Internshala, FAANG careers — into one normalized schema, usable from a CLI or by AI agents over MCP.",
-    "tech": ["Python", "Async orchestration", "MCP server", "CLI"],
-    "links": { "github": "https://github.com/anikeaty08/hireHunt" },
+    "tech": [
+      "Python",
+      "Async orchestration",
+      "MCP server",
+      "CLI"
+    ],
+    "links": {
+      "github": "https://github.com/anikeaty08/hireHunt"
+    },
     "color": "#fbbf24",
     "caseStudy": {
       "problem": "Listings are scattered across sites with different formats, reliability and rate limits.",
@@ -58,7 +79,10 @@
         "Graceful partial results when a single source fails",
         "Fixture-based parser contract tests and benchmark reporting"
       ],
-      "results": ["10+ sources across India and global markets", "Exposed to agents through an MCP server"]
+      "results": [
+        "10+ sources across India and global markets",
+        "Exposed to agents through an MCP server"
+      ]
     }
   },
   {
@@ -66,8 +90,15 @@
     "title": "swiggy-cli",
     "tagline": "Swiggy for terminals and agents",
     "oneLiner": "A CLI over Swiggy's MCP servers for Food, Instamart and Dineout — stable JSON output for scripts and agent loops, plus a Telegram ordering agent.",
-    "tech": ["TypeScript", "MCP", "OAuth", "Telegram bot"],
-    "links": { "github": "https://github.com/anikeaty08/swiggy-cli" },
+    "tech": [
+      "TypeScript",
+      "MCP",
+      "OAuth",
+      "Telegram bot"
+    ],
+    "links": {
+      "github": "https://github.com/anikeaty08/swiggy-cli"
+    },
     "color": "#fb7185",
     "caseStudy": {
       "problem": "Swiggy's MCP servers are tool-native but have no dependable terminal or scripting surface.",
@@ -87,8 +118,15 @@
     "title": "AgentVault",
     "tagline": "Trust layer for AI agents",
     "oneLiner": "Launch, govern and verify AI agents on 0G: tokenized ownership, scoped permissions and spending limits, encrypted state and auditable actions.",
-    "tech": ["TypeScript", "0G Chain", "0G Storage", "Smart contracts"],
-    "links": { "github": "https://github.com/anikeaty08/AgentVault" },
+    "tech": [
+      "TypeScript",
+      "0G Chain",
+      "0G Storage",
+      "Smart contracts"
+    ],
+    "links": {
+      "github": "https://github.com/anikeaty08/AgentVault"
+    },
     "color": "#a78bfa",
     "caseStudy": {
       "problem": "Once agents hold money and permissions, users need to know who owns an agent and exactly what it may do.",
@@ -97,7 +135,10 @@
         "Encrypted manifests and state on 0G Storage",
         "Governance actions and trust metadata recorded on-chain"
       ],
-      "results": ["A launchpad plus an operational control plane for agents", "Agents can be paused, verified and monetized safely"]
+      "results": [
+        "A launchpad plus an operational control plane for agents",
+        "Agents can be paused, verified and monetized safely"
+      ]
     }
   }
 ]
