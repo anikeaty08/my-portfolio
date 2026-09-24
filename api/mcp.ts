@@ -4,8 +4,8 @@
  * and ask about Anikeat's projects, skills or how to get in touch.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
-import projects from "../src/projects.json";
-import skills from "../src/skills.json";
+import projects from "../src/projects.json" with { type: "json" }; // attribute required: Vercel runs this as plain ESM
+import skills from "../src/skills.json" with { type: "json" };
 
 type Json = Record<string, unknown>;
 type Rpc = { jsonrpc: "2.0"; id?: string | number | null; method: string; params?: Json };
