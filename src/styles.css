@@ -1420,3 +1420,198 @@ kbd {
     display: none;
   }
 }
+
+/* ------------------------------------------------------------ NPC thought bubbles */
+
+.thought__bubble {
+  padding: 0.3em 0.7em;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 0 2px 0 var(--ink);
+  font: 600 12px/1.2 var(--body);
+  color: var(--ink);
+  white-space: nowrap;
+  transition: opacity 0.3s;
+}
+
+/* ------------------------------------------------------------ autopilot */
+
+.quick__pilot {
+  background: var(--ink);
+  color: #fff;
+  border-radius: 11px;
+}
+.quick .quick__pilot:hover {
+  background: var(--accent);
+  color: #fff;
+}
+.pilot-bar {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 2 * var(--gutter)));
+  padding: 0.8rem;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: 0 6px 0 var(--ink), var(--shadow);
+  animation: pop-in 0.25s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  z-index: 30;
+}
+.pilot-bar form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.pilot-bar__badge {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #7cf5b0;
+}
+.pilot-bar input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 1rem;
+  padding: 0.55rem 0.4rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+}
+.pilot-bar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+.pilot-bar__chips button {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 0.8rem;
+}
+.pilot-bar__chips button:hover {
+  border-color: var(--ink);
+}
+.pilot-bar__hint {
+  margin: 0.6rem 0 0;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+.pilot-trace {
+  position: absolute;
+  right: var(--gutter);
+  top: calc(var(--gutter) + 64px);
+  width: min(300px, calc(100vw - 2 * var(--gutter)));
+  padding: 0.7rem 0.9rem;
+  background: rgba(27, 29, 36, 0.9);
+  color: #e8ecf3;
+  border-radius: 16px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  box-shadow: var(--shadow);
+  animation: pop-in 0.25s ease both;
+}
+.pilot-trace__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+}
+.pilot-trace__head .linkish {
+  margin-left: auto;
+  color: #9fb3c8;
+  font-size: 0.7rem;
+}
+.pilot-trace__led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #64748b;
+}
+.pilot-trace__led.is-on {
+  background: #4ade80;
+  box-shadow: 0 0 8px #4ade80;
+  animation: blink 1.2s infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+.pilot-trace ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.3rem;
+}
+.pilot-trace li {
+  position: relative;
+  padding-left: 1.1rem;
+  line-height: 1.4;
+}
+.pilot-trace li::before {
+  position: absolute;
+  left: 0;
+}
+.pilot-trace li.is-done::before {
+  content: "✓";
+  color: #4ade80;
+}
+.pilot-trace li.is-doing::before {
+  content: "›";
+  color: #fbbf24;
+}
+.pilot-trace li.is-fail::before {
+  content: "✕";
+  color: #f87171;
+}
+@media (max-width: 720px) {
+  .pilot-trace {
+    top: calc(var(--gutter) + 152px);
+  }
+  .pilot-bar {
+    top: 16%;
+  }
+}
+
+/* ------------------------------------------------------------ MCP panel */
+
+.mcp-url {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.8rem;
+  border: 1.5px solid var(--ink);
+  border-radius: 12px;
+  background: #fff;
+}
+.mcp-url code {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.code {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  background: var(--ink);
+  color: #e8ecf3;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  overflow-x: auto;
+}

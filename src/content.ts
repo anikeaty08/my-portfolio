@@ -45,7 +45,7 @@ export const experience: Experience[] = [
 
 export const about = {
   lead: "I build agentic systems end to end — the agent loop, the tools it calls, and the safety rails around it.",
-  body: "Recent work spans AI developer tools published on npm and PyPI, MCP servers that let agents use real services, and on-chain trust layers for autonomous agents. I also wrote an x86_64 kernel to understand how systems work underneath.",
+  body: "Recent work spans AI developer tools, MCP servers that let agents use real services, and on-chain trust layers for autonomous agents. I also wrote an x86_64 kernel to understand how systems work underneath.",
   facts: [
     { k: "Public repositories", v: "50+" },
     { k: "Agentic projects", v: "5+" },
@@ -53,7 +53,7 @@ export const about = {
     { k: "CGPA", v: "8.85" },
   ],
   highlights: [
-    "Published commit-orchestra, an AI-agent Git CLI, to npm and PyPI",
+    "Built commit-orchestra, a fail-closed AI-agent Git CLI that reviews, commits and opens PRs",
     "Built MCP servers and CLIs that let AI agents use real-world services",
     "3rd rank — AI-based task scheduler at a technical event",
     "IEEE-CIS BMSIT — organizing hackathons (2025 – present)",

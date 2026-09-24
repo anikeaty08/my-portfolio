@@ -26,6 +26,10 @@ type State = {
   moon: boolean;
   /** Achievements drawer open. */
   trophies: boolean;
+  /** Autopilot trace shown in the HUD. */
+  pilot: { active: boolean; steps: { text: string; state: "done" | "doing" | "fail" }[] };
+  /** Autopilot command bar open. */
+  pilotBar: boolean;
 };
 
 let state: State = {
@@ -44,6 +48,8 @@ let state: State = {
   skin: "orange",
   moon: false,
   trophies: false,
+  pilot: { active: false, steps: [] },
+  pilotBar: false,
 };
 const listeners = new Set<() => void>();
 

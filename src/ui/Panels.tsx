@@ -19,6 +19,7 @@ export function zoneInfo(id: ZoneId): { title: string; kicker: string } {
       contact: { title: "Contact", kicker: "The mailbox" },
       lighthouse: { title: "Lights out?", kicker: "The lighthouse" },
       bowling: { title: "Bowling", kicker: "Lane one" },
+      mcp: { title: "Connect your AI", kicker: "MCP server" },
     } as Record<string, { title: string; kicker: string }>
   )[id] ?? { title: id, kicker: "" };
 }
@@ -225,6 +226,41 @@ function BowlingBody() {
   );
 }
 
+const MCP_URL = "https://www.anikeaty08.tech/api/mcp";
+
+function McpBody() {
+  const [copied, setCopied] = useState(false);
+  const config = JSON.stringify({ mcpServers: { anikeat: { url: MCP_URL } } }, null, 2);
+  const copy = () => {
+    void navigator.clipboard?.writeText(MCP_URL).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    });
+  };
+  return (
+    <>
+      <p className="lead">This portfolio is also an MCP server. Plug it into your AI assistant and ask it about my work.</p>
+      <div className="mcp-url">
+        <code>{MCP_URL}</code>
+        <button className="btn btn--small btn--primary" onClick={copy}>
+          {copied ? "Copied ✓" : "Copy"}
+        </button>
+      </div>
+      <h3>Tools it exposes</h3>
+      <ul className="ticks">
+        <li>get_profile, get_skills, get_contact</li>
+        <li>list_projects (filter by tech, e.g. “MCP”)</li>
+        <li>get_project — the full case study</li>
+      </ul>
+      <h3>Claude / ChatGPT</h3>
+      <p>Add a custom connector (remote MCP server) and paste the URL above.</p>
+      <h3>Cursor, VS Code & other clients</h3>
+      <pre className="code">{config}</pre>
+      <p className="muted">Then try: “What has Anikeat built with MCP?”</p>
+    </>
+  );
+}
+
 function body(id: ZoneId): ReactNode {
   if (id.startsWith("project:")) {
     const p = projects.find((q) => q.slug === id.slice(8));
@@ -235,6 +271,7 @@ function body(id: ZoneId): ReactNode {
   if (id === "contact") return <ContactBody />;
   if (id === "lighthouse") return <LighthouseBody />;
   if (id === "bowling") return <BowlingBody />;
+  if (id === "mcp") return <McpBody />;
   return null;
 }
 

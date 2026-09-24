@@ -35,12 +35,10 @@
       "TypeScript",
       "Node.js",
       "GitHub API",
-      "npm + PyPI"
+      "CLI"
     ],
     "links": {
-      "github": "https://github.com/anikeaty08/orchestra-agent",
-      "npm": "https://www.npmjs.com/package/commit-orchestra",
-      "pypi": "https://pypi.org/project/commit-orchestra/"
+      "github": "https://github.com/anikeaty08/orchestra-agent"
     },
     "color": "#ff7a3d",
     "caseStudy": {
@@ -51,8 +49,8 @@
         "Branch + pull request by default, plus a scheduled watch mode"
       ],
       "results": [
-        "Published to npm and PyPI",
-        "Fails closed: no configured agent means no Git changes"
+        "Fails closed: no configured agent means no Git changes",
+        "One command from review to pull request, plus an unattended watch mode"
       ]
     }
   },

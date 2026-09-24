@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "assets": "node scripts/build-assets.mjs"
+    "assets": "node scripts/build-assets.mjs",
+    "test:autopilot": "rolldown scripts/test-autopilot.ts --platform node --format esm --file .sim/test-autopilot.mjs --external node:fs && node .sim/test-autopilot.mjs"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

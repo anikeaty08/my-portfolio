@@ -7,5 +7,5 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
     }
   ],
-  "rewrites": [{ "source": "/((?!world/|models/|assets/|resume).*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/((?!api/|world/|assets/|resume).*)", "destination": "/index.html" }]
 }
