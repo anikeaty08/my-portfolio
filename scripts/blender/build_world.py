@@ -8,7 +8,7 @@ Outputs (in <out_dir>):
 Blender is Z-up; everything written to world.json is already converted to three.js Y-up:
   three(x, y, z) = blender(x, z, -y), and a Blender rotation about Z equals a three rotation about Y.
 
-Run: blender --background --factory-startup --python scripts/blender/build_world.py -- <models_dir> <out_dir>
+Run: blender --background --factory-startup --python scripts/blender/build_world.py -- <out_dir>
 """
 
 import json
@@ -19,16 +19,16 @@ from pathlib import Path
 
 import bmesh
 import bpy
-from mathutils import Vector, noise
+from mathutils import Euler, Vector, noise
 
-args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else ["public/models", "public/world"]
-MODELS, OUT = Path(args[0]), Path(args[1])
+args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else ["public/world"]
+OUT = Path(args[-1])
 OUT.mkdir(parents=True, exist_ok=True)
 FONT = Path("C:/Windows/Fonts/ariblk.ttf")
 
 GROUND = 0.5  # top of the grass
-ISLAND_R = 38.0
-ROAD_IN, ROAD_OUT = 13.0, 16.4
+ISLAND_R = 72.0  # big island: room for the city district, ramps and traffic
+ROAD_IN, ROAD_OUT = 17.0, 20.4
 ROAD_MID = (ROAD_IN + ROAD_OUT) / 2
 VIEW = Vector((0.7071, -0.7071, 0))  # direction toward the game camera (three: +x, +z)
 
@@ -114,6 +114,7 @@ CYAN_GLOW = mat("cyan_glow", "#5ee6ff", 0.3, emit=4)
 RED_GLOW = mat("red_glow", "#ff2a2a", 0.3, emit=10)
 FIRE = mat("fire", "#ff8a1c", 0.3, emit=12)
 PAD = mat("pad", "#ffffff", 0.5, emit=1.2)
+SCREEN_TEXT = mat("screen_text", "#eaf6ff", 0.4, emit=1.6)
 
 
 # ---------------------------------------------------------------- primitives
@@ -234,7 +235,7 @@ annulus("curb_out", ROAD_OUT, ROAD_OUT + 0.35, GROUND + 0.03, CURB)
 for i in range(48):
     box((1.0, 0.16, 0.02), polar(ROAD_MID, i * 7.5, GROUND + 0.03), PAINT, rot_z=math.radians(i * 7.5 + 90))
 
-ZONE_R = 26.0
+ZONE_R = 33.5
 spoke_len = ZONE_R - 5 - ROAD_OUT
 for deg in (0, 90, 180, 270):
     box((ROAD_IN - 6.4, 3.4, 0.03), polar((ROAD_IN + 6.2) / 2, deg, GROUND + 0.012), ROAD, rot_z=math.radians(deg))
@@ -288,97 +289,111 @@ for i in range(10):
     bpy.ops.object.join()
     bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
     c.name = f"dyn_cone_{i}"
-    dynamic.append({"node": c.name, "shape": "box", "group": "cone", "mass": 0.25, "half": [0.35, 0.47, 0.35]})
+    dynamic.append({"node": c.name, "shape": "box", "group": "cone", "mass": 0.25, "half": [0.35, 0.45, 0.35]})
 
 spawn = polar(ROAD_MID, -60)
 spawn_heading = math.radians(-60 + 90)
 
-# ---------------------------------------------------------------- EAST: projects hangar
+# ---------------------------------------------------------------- EAST: project boards
+
+# One source of truth: the same JSON the website renders.
+ROOT = Path(__file__).resolve().parents[2]
+PROJECTS = json.loads((ROOT / "src" / "projects.json").read_text(encoding="utf-8"))
+SKILLS = json.loads((ROOT / "src" / "skills.json").read_text(encoding="utf-8"))
 
 HX = ZONE_R + 3
-hangar = cyl(6.5, 12, (HX + 1.5, 0, GROUND), WALL, rot=(0, math.radians(90), 0), verts=32, fill="NOTHING")
-sol = hangar.modifiers.new("solidify", "SOLIDIFY")
-sol.thickness = 0.35
-for i in range(5):
-    torus_x = HX + 1.5 - 6 + i * 3
-    bpy.ops.mesh.primitive_torus_add(major_radius=6.55, minor_radius=0.12, location=(torus_x, 0, GROUND),
-                                     rotation=(0, math.radians(90), 0), major_segments=48, minor_segments=6)
-    finish(bpy.context.active_object, DARK)
-box((12.5, 14, 0.12), (HX + 1.5, 0, GROUND + 0.06), mat("hangar_floor", "#2c2f38", 0.4))
-static_box(Vector((HX + 1.5, 6.4, GROUND + 2)), (12, 0.8, 4))
-static_box(Vector((HX + 1.5, -6.4, GROUND + 2)), (12, 0.8, 4))
-static_box(Vector((HX + 7.8, 0, GROUND + 2)), (0.6, 13, 4))  # back wall blocks the far end
-box((0.3, 13, 6.5), (HX + 7.7, 0, GROUND + 3.2), WALL)
-sign = text_mesh("PROJECTS", (HX - 4.6, 0, GROUND + 7.2), ORANGE_GLOW, size=1.4, extrude=0.18,
-                 rot=(math.radians(90), 0, math.radians(-90)))
-floor_text("PROJECTS", Vector((ZONE_R - 6.5, -2.5, 0)), WHITE, 1.4)
+PX, PY = ZONE_R + 2.0, 0.0  # center of the project plaza
+ROW = Vector((-VIEW.y, VIEW.x, 0))  # boards stand in a row across the camera's view…
+FACE_VIEW = math.atan2(VIEW.y, VIEW.x) + math.pi / 2  # …and face it, so every board reads head-on
+PB_W, PB_H, PB_Z = 3.9, 2.5, GROUND + 2.45
+SPACING = 4.4
+board_centers = []
 
-project_slugs = ["polychat", "ragg", "equiclear", "poolguard", "astraos", "mlviz"]
-for i, slug in enumerate(project_slugs):
-    y = 6.25 - i * 2.5
-    px = HX + 2.5
-    cyl(0.95, 0.8, (px, y, GROUND + 0.4), WHITE, verts=24)
-    cyl(1.0, 0.08, (px, y, GROUND + 0.82), ORANGE_GLOW, verts=24)
-    static_cyl(Vector((px, y, GROUND + 0.4)), 1.0, 0.8)
-    pad = cyl(0.95, 0.03, (px - 3.2, y, GROUND + 0.075), PAD, verts=32)
-    pad.name = f"pad_{slug}"
+plaza = box((SPACING * len(PROJECTS) + 2.5, 9.0, 0.1), (PX + VIEW.x * 1.2, PY + VIEW.y * 1.2, GROUND + 0.05),
+            mat("plaza_floor", "#2c2f38", 0.45), rot_z=FACE_VIEW)
+MUTED_TEXT = mat("muted_text", "#9fb3c8", 0.5, emit=1.0)
+for i, p in enumerate(PROJECTS):
+    c = Vector((PX, PY, 0)) + ROW * ((i - (len(PROJECTS) - 1) / 2) * SPACING)
+    board_centers.append((p["slug"], c))
+    accent = mat(f"proj_{p['slug']}", p["color"], 0.4, emit=3)
+    front = VIEW * 0.14
+    for s in (-1, 1):
+        post = c + ROW * (s * (PB_W / 2 - 0.3))
+        cyl(0.09, PB_Z - GROUND, (post.x, post.y, GROUND + (PB_Z - GROUND) / 2), METAL, verts=10)
+        static_cyl(Vector((post.x, post.y, GROUND + 1)), 0.18, 2)
+    box((PB_W, 0.22, PB_H), (c.x, c.y, PB_Z), DARK, rot_z=FACE_VIEW, bevel=0.08)
+    box((PB_W - 0.26, 0.06, PB_H - 0.26), (c.x + VIEW.x * 0.1, c.y + VIEW.y * 0.1, PB_Z), SCREEN, rot_z=FACE_VIEW)
+    bar = c + front
+    box((PB_W - 0.26, 0.04, 0.14), (bar.x, bar.y, PB_Z + PB_H / 2 - 0.2), accent, rot_z=FACE_VIEW)
+    t = c + front
+    rot = (math.radians(90), 0, FACE_VIEW)
+    number = t - ROW * (PB_W / 2 - 0.55)
+    text_mesh(f"0{i + 1}", (number.x, number.y, PB_Z + 0.62), accent, size=0.26, extrude=0.02, rot=rot)
+    text_mesh(p["title"], (t.x, t.y, PB_Z + 0.2), accent, size=0.44 if len(p["title"]) < 12 else 0.34,
+              extrude=0.03, rot=rot)
+    text_mesh(p["tagline"], (t.x, t.y, PB_Z - 0.25), SCREEN_TEXT, size=0.2, extrude=0.02, rot=rot)
+    text_mesh("  ·  ".join(p["tech"][:3]), (t.x, t.y, PB_Z - 0.75), MUTED_TEXT, size=0.15, extrude=0.015, rot=rot)
+    pad_at = c + VIEW * 3.2
+    pad = cyl(1.15, 0.03, (pad_at.x, pad_at.y, GROUND + 0.11), PAD, verts=40)
+    pad.name = f"pad_{p['slug']}"
     animated.append(pad.name)
-    zones.append({"id": f"project:{slug}", "kind": "project", "slug": slug, "pos": t3((px - 3.2, y, GROUND)),
-                  "radius": 1.25})
-    f = MODELS / f"{slug}.glb"
-    if f.exists():
-        before = set(bpy.data.objects)
-        bpy.ops.import_scene.gltf(filepath=str(f))
-        roots = [o for o in set(bpy.data.objects) - before if o.parent is None]
-        for o in roots:
-            o.location = (px, y, GROUND + 2.0)
-            o.scale = (0.6, 0.6, 0.6)
-            o.rotation_euler.z += math.radians(-90)
-            o.name = f"project_{slug}"
-            animated.append(o.name)
+    zones.append({"id": f"project:{p['slug']}", "kind": "project", "slug": p["slug"], "pos": t3((pad_at.x, pad_at.y, GROUND)),
+                  "radius": 1.4})
 
-# ---------------------------------------------------------------- WEST: skills billboard + blocks
+sign_at = Vector((PX, PY, 0)) - VIEW * 1.6
+text_mesh("PROJECTS", (sign_at.x, sign_at.y, GROUND + 4.6), ORANGE_GLOW, size=1.2, extrude=0.16,
+          rot=(math.radians(90), 0, FACE_VIEW))
+floor_text("PROJECTS", Vector((ZONE_R - 9.5, -3.0, 0)), WHITE, 1.4)
+PX_BEHIND = Vector((PX, PY, 0)) - VIEW * 3.5  # a golden egg hides here
+
+# ---------------------------------------------------------------- WEST: skills scoreboard + blocks
+
+SKILL_GROUPS = [(g["group"].upper(), g["color"], g["items"]) for g in SKILLS]  # from src/skills.json
+FACE_X = (math.radians(90), 0, math.radians(90))  # text standing up, readable from +X
 
 BX = -(ZONE_R + 2)
-for y in (-4.4, 4.4):
-    cyl(0.2, 7, (BX, y, GROUND + 3.5), METAL, verts=10)
-    static_cyl(Vector((BX, y, GROUND + 3.5)), 0.3, 7)
-box((0.4, 10.5, 5.2), (BX, 0, GROUND + 6.6), DARK, bevel=0.1)
-box((0.1, 9.8, 4.6), (BX + 0.22, 0, GROUND + 6.6), SCREEN)
-text_mesh("SKILLS", (BX + 0.3, 0, GROUND + 7.7), CYAN_GLOW, size=1.2, extrude=0.05,
-          rot=(math.radians(90), 0, math.radians(90)))
-chip_cols = ["#3178c6", "#f7df1e", "#61dafb", "#3776ab", "#8247e5", "#dea584", "#ff6b2c", "#e34f26",
-             "#00b4ab", "#ee4c2c", "#10b981", "#a855f7"]
-for i, c in enumerate(chip_cols):
-    row, col = divmod(i, 6)
-    box((0.15, 1.2, 0.65), (BX + 0.3, -3.75 + col * 1.5, GROUND + 6.1 - row * 0.95),
-        mat(f"chip{i}", c, 0.4, emit=2.5), bevel=0.08)
+BOARD_W, BOARD_H, BOARD_Z = 15.0, 6.6, GROUND + 6.3
+for y in (-6.2, 6.2):
+    cyl(0.22, BOARD_Z - GROUND, (BX, y, GROUND + (BOARD_Z - GROUND) / 2), METAL, verts=10)
+    static_cyl(Vector((BX, y, GROUND + 2)), 0.32, 4)
+box((0.4, BOARD_W, BOARD_H), (BX, 0, BOARD_Z), DARK, bevel=0.12)
+box((0.1, BOARD_W - 0.7, BOARD_H - 0.6), (BX + 0.22, 0, BOARD_Z), SCREEN)
+text_mesh("SKILLS", (BX + 0.3, 0, BOARD_Z + 2.05), CYAN_GLOW, size=0.95, extrude=0.05, rot=FACE_X)
+col_w = (BOARD_W - 1.0) / len(SKILL_GROUPS)
+for i, (title, color, items) in enumerate(SKILL_GROUPS):
+    cy = -(BOARD_W - 1.0) / 2 + col_w * (i + 0.5)
+    accent = mat(f"skill_{i}", color, 0.4, emit=3)
+    text_mesh(title, (BX + 0.3, cy, BOARD_Z + 1.25), accent, size=0.34, extrude=0.03, rot=FACE_X)
+    box((0.05, col_w - 0.6, 0.06), (BX + 0.29, cy, BOARD_Z + 1.12), accent)
+    for n, item in enumerate(items):
+        text_mesh(item, (BX + 0.3, cy, BOARD_Z + 0.55 - n * 0.52), SCREEN_TEXT, size=0.27, extrude=0.02, rot=FACE_X)
 floor_text("SKILLS", Vector((-(ZONE_R - 6.5), 2.5, 0)), WHITE, 1.4)
 zones.append({"id": "skills", "kind": "skills", "pos": t3((BX + 4.5, 0, GROUND)), "radius": 2.6})
 pad = cyl(2.2, 0.03, (BX + 4.5, 0, GROUND + 0.075), PAD, verts=48)
 pad.name = "pad_skills"
 animated.append(pad.name)
 
-# a pyramid of skill blocks to smash
-block_labels = ["TS", "PY", "C", "JS", "RS", "SOL", "JV", "SQL", "ML", "3D"]
+# A pyramid of skill blocks to smash, colored by category, labeled on the two faces the camera sees.
+blocks = [("TS", 0), ("PY", 0), ("C", 0), ("RS", 0), ("JS", 1), ("3D", 1), ("SOL", 2), ("ML", 3), ("RAG", 3), ("OS", 4)]
 k = 0
 for level, count in enumerate((4, 3, 2, 1)):
     for j in range(count):
-        if k >= len(block_labels):
-            break
+        label_text, group = blocks[k]
         x = BX + 8.5
-        y = -2.1 + j * 1.4 + level * 0.7 - 6.5
-        z = GROUND + 0.62 + level * 1.24
-        b = box((1.2, 1.2, 1.2), (x, y, z), mat(f"blk{k}", chip_cols[k % len(chip_cols)], 0.5), bevel=0.08)
-        label = text_mesh(block_labels[k], (x + 0.61, y, z - 0.25), WHITE, size=0.5, extrude=0.03,
-                          rot=(math.radians(90), 0, math.radians(90)))
+        y = -2.1 + j * 1.25 + level * 0.625 - 6.5
+        z = GROUND + 0.6 + level * 1.21
+        b = box((1.2, 1.2, 1.2), (x, y, z), mat(f"blk_{group}", SKILL_GROUPS[group][1], 0.5), bevel=0.08)
+        size = 0.5 if len(label_text) < 3 else 0.36
+        labels = [
+            text_mesh(label_text, (x + 0.6, y, z - size * 0.45), WHITE, size=size, extrude=0.02, rot=FACE_X),
+            text_mesh(label_text, (x, y - 0.6, z - size * 0.45), WHITE, size=size, extrude=0.02, rot=(math.radians(90), 0, 0)),
+        ]
         bpy.ops.object.select_all(action="DESELECT")
-        b.select_set(True)
-        label.select_set(True)
+        for o in [b] + labels:
+            o.select_set(True)
         bpy.context.view_layer.objects.active = b
         bpy.ops.object.join()
-        bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
-        b.name = f"dyn_block_{k}"
+        b.name = f"dyn_block_{k}"  # origin stays at the cube center, matching the collider
         dynamic.append({"node": b.name, "shape": "box", "group": "block", "mass": 0.6, "half": [0.6, 0.6, 0.6]})
         k += 1
 
@@ -442,7 +457,7 @@ for i in range(3):
 
 # ---------------------------------------------------------------- lighthouse (south-west cape)
 
-LX, LY = -26, -25
+LX, LY = -32, -30
 for s in range(6):
     r0, r1 = 1.5 - s * 0.14, 1.5 - (s + 1) * 0.14
     cyl(r0, 1.5, (LX, LY, GROUND + 0.75 + s * 1.5), RED if s % 2 else WHITE, verts=20, r2=r1)
@@ -481,7 +496,7 @@ def clear(x, y, r):
 
 
 # Buildings and zone structures: keep trees and grass off their footprints.
-clear(HX + 1.5, 0, 7.5)
+clear(PX, PY, SPACING * len(PROJECTS) / 2 + 1.5)
 clear(BX + 2, 0, 5.5)
 clear(BX + 8.5, -5, 3.5)
 clear(AX, AY, 4.2)
@@ -521,7 +536,7 @@ BALL = mat("ball", "#2446a8", 0.12, 0.2)
 BOWL_DEG = 45
 bowl_dir = Vector((math.cos(math.radians(BOWL_DEG)), math.sin(math.radians(BOWL_DEG)), 0))
 bowl_side = Vector((-bowl_dir.y, bowl_dir.x, 0))
-lane_start, lane_end = 19.5, 33.0
+lane_start, lane_end = ROAD_OUT + 5.5, ROAD_OUT + 19.0
 lane_mid = bowl_dir * ((lane_start + lane_end) / 2)
 lane_len = lane_end - lane_start
 rot = math.radians(BOWL_DEG)
@@ -595,25 +610,25 @@ zones.append({"id": "bowling", "kind": "bowling", "pos": t3(bowl_dir * (lane_sta
 
 CRATE = mat("crate", "#c98b4b", 0.8)
 CRATE_EDGE = mat("crate_edge", "#8a5a2b", 0.8)
-crate_base = polar(22.5, -22, 0)
+crate_base = polar(28.5, -22, 0)
 k = 0
 for level, count in enumerate((3, 2, 1)):
     for j in range(count):
         off = Vector((0.55 * level + j * 1.1 - 1.1, 0, 0))
-        c = Vector((crate_base.x + off.x, crate_base.y + off.y, GROUND + 0.5 + level * 1.0))
+        c = Vector((crate_base.x + off.x, crate_base.y + off.y, GROUND + 0.505 + level * 1.01))  # colliders must not overlap
         parts = [box((1.0, 1.0, 1.0), c, CRATE, bevel=0.03)]
         for dz in (-0.42, 0.42):
             parts.append(box((1.04, 1.04, 0.12), (c.x, c.y, c.z + dz), CRATE_EDGE))
         parts.append(box((1.04, 0.14, 1.04), (c.x, c.y, c.z), CRATE_EDGE, rot=(math.radians(45), 0, 0)))
         join_as(parts, f"dyn_crate_{k}")
-        dynamic.append({"node": f"dyn_crate_{k}", "shape": "box", "group": "crate", "mass": 0.5, "half": [0.52, 0.52, 0.52]})
+        dynamic.append({"node": f"dyn_crate_{k}", "shape": "box", "group": "crate", "mass": 0.5, "half": [0.52, 0.5, 0.52]})
         k += 1
 clear(crate_base.x, crate_base.y, 4)
 
 # ---------------------------------------------------------------- brick wall (south-west)
 
 BRICK_R = mat("brick_red", "#b8452e", 0.85)
-wall_c = polar(22, 215, 0)
+wall_c = polar(28, 215, 0)
 wall_rot = math.radians(215 + 90)
 wall_dir = Vector((math.cos(wall_rot), math.sin(wall_rot), 0))
 k = 0
@@ -654,7 +669,7 @@ text_mesh("LAP", (banner_mid.x + math.cos(fr - math.pi / 2) * 0.12, banner_mid.y
 # ---------------------------------------------------------------- hidden golden eggs
 
 GOLD = mat("gold", "#ffcf4a", 0.18, 1.0, emit=0.6)
-egg_spots = [Vector((-2.5, ZONE_R + 6.2, 0)), Vector((LX - 4.5, LY - 2.5, 0)), Vector((HX + 6.2, -5.4, 0))]
+egg_spots = [Vector((-2.5, ZONE_R + 6.2, 0)), Vector((LX + 4.0, LY - 3.0, 0)), PX_BEHIND]  # the third hides behind the project boards
 for i, e in enumerate(egg_spots):
     o = ico(0.3, (e.x, e.y, GROUND + 0.8), GOLD, sub=3, scale=(1, 1, 1.3))
     for p in o.data.polygons:
@@ -677,6 +692,156 @@ for i in range(7):
         puffs.append(ico(random.uniform(1.1, 1.9), c + off, CLOUD, sub=1, scale=(1, 1, 0.7)))
     join_as(puffs, f"cloud_{i}")
     animated.append(f"cloud_{i}")
+
+# ---------------------------------------------------------------- city district (north-west)
+# A small grid town: streets, sidewalks, buildings (fade out in-game when they hide the car),
+# street lamps, a traffic light, parked cars to smash. The grid is rotated to face the island center.
+
+TOWN_DEG = 135
+TOWN_C = polar(48, TOWN_DEG, 0)
+T_FWD = Vector((math.cos(math.radians(TOWN_DEG)), math.sin(math.radians(TOWN_DEG)), 0))  # outward
+T_SIDE = Vector((-T_FWD.y, T_FWD.x, 0))
+T_ROT = math.radians(TOWN_DEG)
+BLOCK, STREET = 8.0, 5.0
+N_BLOCKS = 2
+SPAN = N_BLOCKS * BLOCK + (N_BLOCKS + 1) * STREET  # 31 m square
+SIDEWALK = mat("sidewalk", "#c9c4ba", 0.9)
+WINDOWS = mat("windows", "#ffe9a8", 0.3, emit=0.35)  # three.js turns these up at night
+FACADES = ["#e8dccb", "#c9d6e3", "#f1c9b5", "#d7e6c8", "#e6d3ef", "#f4e3b1", "#b9c7cf"]
+
+
+def town(u, v, z=GROUND):
+    """Town-local (u along the outward axis, v across) to world."""
+    p = TOWN_C + T_FWD * u + T_SIDE * v
+    return Vector((p.x, p.y, z))
+
+
+# connecting avenue from the inner ring to the town
+near = ROAD_OUT - 0.2
+far = 48 - SPAN / 2 + 0.1
+mid = polar((near + far) / 2, TOWN_DEG, GROUND + 0.012)
+box((far - near, STREET, 0.03), mid, ROAD, rot_z=T_ROT)
+
+# street grid (lines at u, v = -SPAN/2 + STREET/2 + k * (BLOCK + STREET))
+lines = [-SPAN / 2 + STREET / 2 + k * (BLOCK + STREET) for k in range(N_BLOCKS + 1)]
+for L in lines:
+    c = town(L, 0, GROUND + 0.013)
+    box((STREET, SPAN, 0.03), c, ROAD, rot_z=T_ROT)
+    c = town(0, L, GROUND + 0.014)
+    box((SPAN, STREET, 0.03), c, ROAD, rot_z=T_ROT)
+    for k in range(-6, 7):  # dashed center lines
+        d = town(L, k * 2.3, GROUND + 0.03)
+        box((0.12, 1.1, 0.01), d, PAINT, rot_z=T_ROT)
+        d = town(k * 2.3, L, GROUND + 0.031)
+        box((1.1, 0.12, 0.01), d, PAINT, rot_z=T_ROT)
+
+random.seed(17)
+b_index = 0
+lamp_spots = []
+for bi in range(N_BLOCKS):
+    for bj in range(N_BLOCKS):
+        bu = -SPAN / 2 + STREET + BLOCK / 2 + bi * (BLOCK + STREET)
+        bv = -SPAN / 2 + STREET + BLOCK / 2 + bj * (BLOCK + STREET)
+        box((BLOCK, BLOCK, 0.18), town(bu, bv, GROUND + 0.09), SIDEWALK, rot_z=T_ROT, bevel=0.04)
+        lamp_spots += [(bu - BLOCK / 2 + 0.4, bv - BLOCK / 2 + 0.4), (bu + BLOCK / 2 - 0.4, bv + BLOCK / 2 - 0.4)]
+        for qi in (-1, 1):
+            for qj in (-1, 1):
+                w, d = random.uniform(2.6, 3.3), random.uniform(2.6, 3.3)
+                h = random.choice([3.2, 4.5, 6.0, 7.5, 9.5])
+                cu, cv = bu + qi * 1.85, bv + qj * 1.85
+                base = town(cu, cv, GROUND + 0.18)
+                facade = mat(f"facade_{b_index % len(FACADES)}", FACADES[b_index % len(FACADES)], 0.8)
+                parts = [box((w, d, h), (base.x, base.y, base.z + h / 2), facade, rot_z=T_ROT, bevel=0.05)]
+                floors = max(1, int((h - 0.8) / 1.5))
+                for f in range(floors):  # window bands on all four sides
+                    z = base.z + 1.1 + f * 1.5
+                    parts.append(box((w + 0.04, d * 0.8, 0.45), (base.x, base.y, z), WINDOWS, rot_z=T_ROT))
+                    parts.append(box((w * 0.8, d + 0.04, 0.45), (base.x, base.y, z), WINDOWS, rot_z=T_ROT))
+                roof_c = town(cu + random.uniform(-0.5, 0.5), cv + random.uniform(-0.5, 0.5), base.z + h)
+                parts.append(box((1.0, 0.8, 0.5), (roof_c.x, roof_c.y, roof_c.z + 0.25), METAL, rot_z=T_ROT))
+                bld = join_as(parts, f"bldg_{b_index}")
+                animated.append(bld.name)
+                static_box(Vector((base.x, base.y, base.z + h / 2)), (w, d, h), T_ROT)
+                b_index += 1
+        static_box(town(bu, bv, GROUND + 0.09), (BLOCK, BLOCK, 0.18), T_ROT)  # curb you can bump
+
+LAMP_HEAD = mat("lamp_head", "#fff2c4", 0.3, emit=2.0)
+for u, v in lamp_spots:
+    p = town(u, v, GROUND)
+    cyl(0.06, 3.4, (p.x, p.y, GROUND + 1.9), DARK, verts=8)
+    ico(0.18, (p.x, p.y, GROUND + 3.65), LAMP_HEAD, sub=2)
+    static_cyl(Vector((p.x, p.y, GROUND + 1)), 0.12, 2)
+
+# a traffic light at the central intersection (lamps animated in three.js)
+tl = town(lines[1] + STREET / 2 + 0.4, lines[1] + STREET / 2 + 0.4)
+cyl(0.08, 3.6, (tl.x, tl.y, GROUND + 1.8), DARK, verts=8)
+box((0.35, 0.35, 1.0), (tl.x, tl.y, GROUND + 3.9), DARK, rot_z=T_ROT, bevel=0.04)
+for k, (name, col) in enumerate((("tl_red", "#ff3b30"), ("tl_amber", "#ffb020"), ("tl_green", "#34c759"))):
+    lamp = ico(0.11, (tl.x + VIEW.x * 0.19, tl.y + VIEW.y * 0.19, GROUND + 4.2 - k * 0.3), mat(name, col, 0.3, emit=0.2), sub=2)
+    lamp.name = name
+    animated.append(name)
+static_cyl(Vector((tl.x, tl.y, GROUND + 1)), 0.15, 2)
+
+# parked cars along the streets — dynamic, so they can be shunted
+CAR_COLS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#e5e7eb", "#6366f1"]
+for k in range(6):
+    L = lines[k % len(lines)]
+    along = random.uniform(-SPAN / 2 + 4, SPAN / 2 - 4)
+    u, v, yaw = (L - 1.6, along, T_ROT + math.pi / 2) if k % 2 else (along, L + 1.6, T_ROT)
+    p = town(u, v, GROUND + 0.55)
+    body_c = mat(f"parked_{k}", CAR_COLS[k], 0.4)
+    parts = [box((2.2, 1.1, 0.55), (p.x, p.y, p.z), body_c, rot_z=yaw, bevel=0.1),
+             box((1.2, 0.95, 0.45), (p.x, p.y, p.z + 0.48), mat("car_glass", "#1b2a3a", 0.08, 0.3), rot_z=yaw, bevel=0.08)]
+    for sx in (-0.7, 0.7):
+        for sy in (-0.55, 0.55):
+            off = Vector((math.cos(yaw) * sx - math.sin(yaw) * sy, math.sin(yaw) * sx + math.cos(yaw) * sy, 0))
+            parts.append(cyl(0.28, 0.2, (p.x + off.x, p.y + off.y, p.z - 0.28), DARK, rot=(math.radians(90), 0, yaw), verts=12))
+    car_obj = join_as(parts, f"dyn_parked_{k}")
+    dynamic.append({"node": car_obj.name, "shape": "box", "group": "parked", "mass": 3.0, "half": [1.1, 0.63, 0.56]})
+
+floor_text("DOWNTOWN", town(-SPAN / 2 - 3.2, 0), WHITE, 1.3)
+clear(TOWN_C.x, TOWN_C.y, SPAN * 0.75)
+clear(mid.x, mid.y, (far - near) / 2 + 1)
+
+# ---------------------------------------------------------------- stunt ramps
+
+
+def ramp(center, heading_deg, length=7.0, width=4.0, height=1.7):
+    """A wedge you drive up along `heading_deg`. Collider is an inclined box matching the top surface."""
+    a = math.radians(heading_deg)
+    slope = math.atan2(height, length)
+    bm = bmesh.new()
+    hl, hw = length / 2, width / 2
+    v = [bm.verts.new(p) for p in ((-hl, -hw, 0), (hl, -hw, 0), (hl, hw, 0), (-hl, hw, 0), (hl, -hw, height), (hl, hw, height))]
+    for f in ((0, 3, 2, 1), (0, 1, 4), (3, 5, 2), (1, 2, 5, 4), (0, 4, 5, 3)):
+        bm.faces.new([v[i] for i in f])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    me = bpy.data.meshes.new("ramp")
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new("ramp", me)
+    bpy.context.collection.objects.link(o)
+    o.location = (center.x, center.y, GROUND)
+    o.rotation_euler = (0, 0, a)
+    finish(o, mat("ramp", "#f5b83d", 0.6))
+    for s in (-1, 1):  # warning stripes on the sides
+        stripe_at = Vector((center.x, center.y, 0)) + Vector((-math.sin(a), math.cos(a), 0)) * (s * (hw + 0.01))
+        box((length * 0.9, 0.02, 0.18), (stripe_at.x, stripe_at.y, GROUND + height * 0.3), DARK, rot_z=a)
+    # inclined collider slab: its top face is the ramp surface
+    thick = 0.4
+    slab_len = math.hypot(length, height)
+    n = Vector((-math.sin(slope) * math.cos(a), -math.sin(slope) * math.sin(a), math.cos(slope)))
+    top_mid = Vector((center.x, center.y, GROUND + height / 2))
+    c = top_mid - n * (thick / 2)
+    q = Euler((0, -slope, a), "XYZ").to_quaternion()  # pitch up, then yaw
+    colliders.append({"shape": "box", "pos": t3(c), "half": [slab_len / 2, thick / 2, width / 2],
+                      "quat": [round(q.x, 5), round(q.z, 5), round(-q.y, 5), round(q.w, 5)]})
+    clear(center.x, center.y, length * 0.6)
+
+
+ramp(polar(46, -8, 0), -8 + 90)
+ramp(polar(44, 250, 0), 250 - 90)
+ramp(polar(56, 60, 0), 60 + 180)
 
 # ---------------------------------------------------------------- trees and rocks
 
@@ -707,7 +872,7 @@ def blocked(p):
 
 leafs = [LEAF_A, LEAF_B, LEAF_C]
 placed = tries = 0
-while placed < 95 and tries < 6000:
+while placed < 170 and tries < 9000:
     tries += 1
     r = random.uniform(8, ISLAND_R - 3)
     a = random.uniform(0, math.tau)
@@ -764,6 +929,14 @@ bpy.ops.object.select_all(action="SELECT")
 bpy.ops.export_scene.gltf(filepath=str(OUT / "world.glb"), export_format="GLB", use_selection=True,
                           export_yup=True, export_apply=True, export_texcoords=False)
 
+# Record where each prop starts (three.js space), so physics can be tested without the GLB.
+for d in dynamic:
+    o = bpy.data.objects.get(d["node"])
+    if o:
+        loc, q, _ = o.matrix_world.decompose()
+        d["pos"] = t3(loc)
+        d["quat"] = [round(q.x, 5), round(q.z, 5), round(-q.y, 5), round(q.w, 5)]
+
 meta = {
     "ground": GROUND,
     "islandRadius": ISLAND_R,
@@ -772,7 +945,8 @@ meta = {
     "dynamic": dynamic,
     "zones": zones,
     "animated": animated,
-    "roads": {"ringIn": ROAD_IN, "ringOut": ROAD_OUT, "plaza": 6.5, "spokeHalf": 1.7, "spokes": [0, 90, 180, 270]},
+    "roads": {"ringIn": ROAD_IN, "ringOut": ROAD_OUT, "plaza": 6.5, "spokeHalf": 1.7, "spokes": [0, 90, 180, 270, TOWN_DEG]},
+    "town": {"center": t3(TOWN_C), "span": SPAN, "rotY": round(T_ROT, 4)},
     "clearings": [[round(x, 3), round(-y, 3), r] for x, y, r in clearings],
     "shore": shore_radii(),
 }
@@ -780,40 +954,194 @@ meta = {
 print(f"[world] {len(colliders)} colliders, {len(dynamic)} dynamic props, {len(zones)} zones")
 
 # ---------------------------------------------------------------- the car (separate file)
+# Frame: +X forward, Z up. The physics chassis in Car.tsx is a 2.5 x 0.6 x 1.36 box centered 0.12 above the origin.
+# The world stays loaded for the hero renders below; everything but the car is removed before export.
 
-bpy.ops.object.select_all(action="SELECT")
-bpy.ops.object.delete()
+GLASS = mat("car_glass", "#1b2a3a", 0.08, 0.3)
+CHROME = mat("chrome", "#e8ebf0", 0.15, 1.0)
+
+
+def prism(name, bottom, top, z0, z1, m):
+    """Box whose top face is a different rectangle: (x0, x1, half_y) each. Gives a sloped windshield."""
+    bm = bmesh.new()
+    vs = []
+    for (x0, x1, hy), z in ((bottom, z0), (top, z1)):
+        vs.append([bm.verts.new(p) for p in ((x0, -hy, z), (x1, -hy, z), (x1, hy, z), (x0, hy, z))])
+    b, t = vs
+    bm.faces.new(list(reversed(b)))
+    bm.faces.new(t)
+    for i in range(4):
+        j = (i + 1) % 4
+        bm.faces.new((b[i], b[j], t[j], t[i]))
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    bev = o.modifiers.new("bevel", "BEVEL")
+    bev.width, bev.segments = 0.05, 2
+    return finish(o, m)
+
+
 body_parts = [
-    box((2.5, 1.35, 0.5), (0, 0, 0.1), ORANGE, bevel=0.14),
-    box((1.35, 1.15, 0.52), (-0.25, 0, 0.6), mat("car_glass", "#1b2a3a", 0.08, 0.3), bevel=0.12),
-    box((1.4, 1.2, 0.08), (-0.25, 0, 0.88), ORANGE, bevel=0.03),
-    box((0.3, 1.45, 0.08), (-1.28, 0, 0.62), DARK, bevel=0.02),
-    box((0.1, 0.1, 0.3), (-1.2, 0.45, 0.45), DARK),
-    box((0.1, 0.1, 0.3), (-1.2, -0.45, 0.45), DARK),
-    box((0.06, 0.3, 0.14), (1.26, 0.42, 0.18), WARM_GLOW),
-    box((0.06, 0.3, 0.14), (1.26, -0.42, 0.18), WARM_GLOW),
-    box((0.06, 0.32, 0.1), (-1.26, 0.42, 0.2), RED_GLOW),
-    box((0.06, 0.32, 0.1), (-1.26, -0.42, 0.2), RED_GLOW),
-    box((0.5, 1.39, 0.12), (1.0, 0, -0.1), DARK, bevel=0.03),
+    box((2.5, 1.3, 0.46), (0, 0, 0.1), ORANGE, bevel=0.16),
+    prism("cabin", (-0.95, 0.42, 0.57), (-0.82, 0.02, 0.5), 0.33, 0.86, GLASS),
+    box((0.96, 1.06, 0.07), (-0.4, 0, 0.9), ORANGE, bevel=0.03),
+    # racing stripe down both sides
+    box((2.1, 0.012, 0.07), (0, 0.652, 0.2), WHITE),
+    box((2.1, 0.012, 0.07), (0, -0.652, 0.2), WHITE),
+    # bumpers + grille
+    box((0.16, 1.36, 0.15), (1.28, 0, -0.04), DARK, bevel=0.04),
+    box((0.16, 1.36, 0.15), (-1.28, 0, -0.04), DARK, bevel=0.04),
+    box((0.03, 0.5, 0.15), (1.262, 0, 0.19), DARK),
+    # rear wing
+    box((0.3, 1.45, 0.07), (-1.24, 0, 0.66), DARK, bevel=0.02),
+    box((0.08, 0.08, 0.32), (-1.18, 0.42, 0.47), DARK),
+    box((0.08, 0.08, 0.32), (-1.18, -0.42, 0.47), DARK),
+    # tail lights + license plate
+    box((0.04, 0.3, 0.09), (-1.262, 0.42, 0.2), RED_GLOW),
+    box((0.04, 0.3, 0.09), (-1.262, -0.42, 0.2), RED_GLOW),
+    box((0.02, 0.42, 0.14), (-1.268, 0, 0.1), WHITE),
+    text_mesh("AY 08", (-1.285, 0, 0.055), DARK, size=0.1, extrude=0.005, rot=(math.radians(90), 0, math.radians(-90))),
+    cyl(0.045, 0.2, (-1.3, -0.3, -0.08), CHROME, rot=(0, math.radians(90), 0), verts=10),  # exhaust
 ]
+for y in (-0.45, 0.45):  # round headlights in chrome rings
+    body_parts.append(cyl(0.12, 0.05, (1.25, y, 0.19), CHROME, rot=(0, math.radians(90), 0), verts=18, smooth=True))
+    body_parts.append(cyl(0.095, 0.06, (1.26, y, 0.19), WARM_GLOW, rot=(0, math.radians(90), 0), verts=18, smooth=True))
+for x in (-0.8, 0.8):  # fender flares over each wheel
+    for y in (-0.66, 0.66):
+        body_parts.append(box((0.86, 0.14, 0.08), (x, y * 1.05, 0.16), DARK, bevel=0.035))
 bpy.ops.object.select_all(action="DESELECT")
 for o in body_parts:
     apply_all_modifiers(o)
     o.select_set(True)
-bpy.context.view_layer.objects.active = body_parts[0]
+bpy.context.view_layer.objects.active = body_parts[0]  # its origin is the chassis frame origin
 bpy.ops.object.join()
 body = bpy.context.active_object
 body.name = "body"
 
-tire = cyl(0.36, 0.3, (0, 0, 0), DARK, rot=(math.radians(90), 0, 0), verts=20, smooth=True)
-hub = cyl(0.19, 0.32, (0, 0, 0), METAL, rot=(math.radians(90), 0, 0), verts=10)
+# Wheel: axle along Blender Y (three.js Z). Radius 0.36 m, width 0.3 m — must match WHEEL_RADIUS in Car.tsx.
+RUBBER = mat("rubber", "#1c1d22", 0.85)
+RIM = mat("rim", "#d9dde3", 0.25, 1.0)
+RIM_DARK = mat("rim_dark", "#7d838e", 0.35, 1.0)
+AXLE = (math.radians(90), 0, 0)
+parts = []
+tire = cyl(0.335, 0.28, (0, 0, 0), RUBBER, rot=AXLE, verts=28, smooth=True)
+bev = tire.modifiers.new("bevel", "BEVEL")
+bev.width, bev.segments, bev.limit_method = 0.07, 3, "ANGLE"  # rounded sidewalls
+parts.append(tire)
+for n in range(26):  # staggered tread blocks around the circumference
+    phi = n / 26 * math.tau
+    for side in (-1, 1):
+        off = 0.02 if n % 2 else -0.02
+        r = 0.347
+        blk = box((0.06, 0.1, 0.026), (math.sin(phi) * r, side * 0.075 + off * side, math.cos(phi) * r), RUBBER,
+                  rot=(0, phi, 0), bevel=0.01)
+        parts.append(blk)
+parts.append(cyl(0.215, 0.31, (0, 0, 0), RIM_DARK, rot=AXLE, verts=24, smooth=True))  # rim barrel
+for face in (-1, 1):
+    y = face * 0.155
+    parts.append(cyl(0.2, 0.02, (0, y, 0), RIM_DARK, rot=AXLE, verts=24, smooth=True))  # recessed rim face
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.2, minor_radius=0.02, location=(0, y, 0), rotation=AXLE,
+                                     major_segments=28, minor_segments=6)
+    parts.append(finish(bpy.context.active_object, RIM, flat=False))  # bright rim lip
+    for s in range(5):  # spokes
+        a = s / 5 * math.tau
+        parts.append(box((0.05, 0.03, 0.17), (math.sin(a) * 0.1, y + face * 0.022, math.cos(a) * 0.1), RIM,
+                         rot=(0, a, 0), bevel=0.008))
+    parts.append(cyl(0.065, 0.03, (0, y + face * 0.02, 0), ORANGE, rot=AXLE, verts=16, smooth=True))  # hubcap
+wheel = join_as(parts, "wheel")
+wheel.location = (0, -4, 0)  # out of the way; three.js places four copies
+
+# ---------------------------------------------------------------- hero renders (loader backdrop, classic site, link previews)
+
+
+def render_hero():
+    rig = bpy.data.objects.new("hero_car", None)
+    bpy.context.collection.objects.link(rig)
+    at = polar(ROAD_MID, -28, GROUND + 0.66)
+    rig.location = at
+    rig.rotation_euler = (0, 0, math.radians(-28 + 90))
+    copies = []
+    b = body.copy()
+    bpy.context.collection.objects.link(b)
+    b.parent = rig
+    copies.append(b)
+    for x in (-0.8, 0.8):
+        for y in (-0.64, 0.64):
+            w = wheel.copy()
+            bpy.context.collection.objects.link(w)
+            w.parent = rig
+            w.location = (x, y, -0.3)
+            copies.append(w)
+
+    bpy.ops.object.light_add(type="SUN", rotation=(math.radians(48), math.radians(8), math.radians(38)))
+    sun = bpy.context.active_object
+    sun.data.energy, sun.data.angle = 4.2, math.radians(4)
+    sun.data.color = (1.0, 0.95, 0.86)
+    world = bpy.context.scene.world or bpy.data.worlds.new("w")
+    bpy.context.scene.world = world
+    try:
+        world.use_nodes = True
+    except AttributeError:
+        pass
+    bg = world.node_tree.nodes.get("Background")
+    bg.inputs["Color"].default_value = (*srgb("#a8d8f4"), 1)
+    bg.inputs["Strength"].default_value = 1.1
+    bpy.ops.mesh.primitive_plane_add(size=900, location=(0, 0, -0.35))
+    sea = finish(bpy.context.active_object, mat("hero_sea", "#3aa7d6", 0.2))
+
+    s = bpy.context.scene
+    for eng in ("BLENDER_EEVEE", "BLENDER_EEVEE_NEXT"):
+        try:
+            s.render.engine = eng
+            break
+        except TypeError:
+            continue
+    try:
+        s.eevee.taa_render_samples = 48
+    except AttributeError:
+        pass
+    cam = bpy.data.objects.new("hero_cam", bpy.data.cameras.new("hero_cam"))
+    bpy.context.collection.objects.link(cam)
+    cam.location = (58, -58, 44)  # keep in sync with INTRO_FROM in src/game/Car.tsx
+    cam.data.lens = 34
+    cam.rotation_euler = (Vector((0, 4, 0)) - cam.location).to_track_quat("-Z", "Y").to_euler()
+    s.camera = cam
+    shots = [("hero.webp", 1600, 1000, "WEBP"), ("og.jpg", 1200, 630, "JPEG")]
+    for name, w_, h_, fmt in shots:
+        s.render.resolution_x, s.render.resolution_y = w_, h_
+        s.render.image_settings.file_format = fmt
+        s.render.image_settings.quality = 82
+        s.render.filepath = str((OUT / name).resolve())
+        bpy.ops.render.render(write_still=True)
+        print(f"[world] rendered {name}")
+
+    # Each project board, head-on: the classic site uses these as its card images.
+    thumbs = OUT / "thumbs"
+    thumbs.mkdir(exist_ok=True)
+    s.render.resolution_x, s.render.resolution_y = 960, 600
+    s.render.image_settings.file_format = "WEBP"
+    s.render.image_settings.color_mode = "RGB"
+    cam.data.lens = 50
+    for slug, c in board_centers:
+        eye = Vector((c.x, c.y, PB_Z)) + VIEW * 6.2
+        cam.location = eye
+        cam.rotation_euler = (Vector((c.x, c.y, PB_Z)) - eye).to_track_quat("-Z", "Y").to_euler()
+        print(f"[thumb] {slug} center={tuple(round(v, 1) for v in c)} eye={tuple(round(v, 1) for v in eye)}")
+        s.render.filepath = str((thumbs / f"{slug}.webp").resolve())
+        bpy.ops.render.render(write_still=True)
+    print(f"[world] rendered {len(board_centers)} board thumbnails")
+    return copies + [rig, sun, sea, cam]
+
+
+render_hero()
+
+# Keep only the car parts for car.glb.
 bpy.ops.object.select_all(action="DESELECT")
-tire.select_set(True)
-hub.select_set(True)
-bpy.context.view_layer.objects.active = tire
-bpy.ops.object.join()
-tire.name = "wheel"
-tire.location = (0, -4, 0)  # out of the way; three.js places four copies
+for o in list(bpy.data.objects):
+    if o not in (body, wheel):
+        bpy.data.objects.remove(o, do_unlink=True)
 
 bpy.ops.object.select_all(action="SELECT")
 bpy.ops.export_scene.gltf(filepath=str(OUT / "car.glb"), export_format="GLB", use_selection=True, export_yup=True,

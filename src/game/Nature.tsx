@@ -63,7 +63,7 @@ function onRoad(x: number, z: number, data: WorldData) {
 
 function Grass({ data }: { data: WorldData }) {
   const night = useStore((s) => s.night);
-  const count = quality.lite ? 5000 : quality.mobile ? 9000 : 26000;
+  const count = quality.lite ? 9000 : quality.mobile ? 16000 : 60000; // one draw call however many
   const light = useRef(1);
 
   const { geo, uniforms } = useMemo(() => {

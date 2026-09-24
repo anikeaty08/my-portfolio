@@ -1,19 +1,18 @@
-"""Procedurally models the portfolio's 3D assets and exports them as GLB.
+"""Procedurally models the featured-project centerpieces and exports them as GLB.
 
 Run headless:  blender --background --factory-startup --python scripts/blender/build_models.py -- <out_dir>
 """
 
 import math
-import random
 import sys
 from pathlib import Path
 
-import bmesh
 import bpy
-from mathutils import Vector, noise
+from mathutils import Vector
 
 OUT_DIR = Path(sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else "public/models")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
+FONT = Path("C:/Windows/Fonts/ariblk.ttf")
 
 
 # ---------------------------------------------------------------- helpers
@@ -93,8 +92,8 @@ def cylinder(radius, depth, loc, material, parent, rot=(0, 0, 0), verts=32, beve
     return finish(o, material, parent, smooth=True, bevel=bevel)
 
 
-def cone(r1, r2, depth, loc, material, parent, rot=(0, 0, 0)):
-    bpy.ops.mesh.primitive_cone_add(radius1=r1, radius2=r2, depth=depth, location=loc, rotation=rot, vertices=32)
+def cone(r1, r2, depth, loc, material, parent, rot=(0, 0, 0), verts=32):
+    bpy.ops.mesh.primitive_cone_add(radius1=r1, radius2=r2, depth=depth, location=loc, rotation=rot, vertices=verts)
     return finish(bpy.context.active_object, material, parent)
 
 
@@ -102,6 +101,30 @@ def torus(major, minor, loc, material, parent, rot=(0, 0, 0)):
     bpy.ops.mesh.primitive_torus_add(major_radius=major, minor_radius=minor, location=loc, rotation=rot,
                                      major_segments=64, minor_segments=16)
     return finish(bpy.context.active_object, material, parent)
+
+
+def link(a, b, radius, material, parent):
+    """A rod from point a to point b."""
+    a, b = Vector(a), Vector(b)
+    d = b - a
+    rot = Vector((0, 0, 1)).rotation_difference(d.normalized()).to_euler()
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=d.length, location=(a + b) / 2, rotation=rot, vertices=16)
+    return finish(bpy.context.active_object, material, parent)
+
+
+def text(body, loc, material, parent, size=0.4, extrude=0.03, rot=(math.radians(90), 0, 0)):
+    bpy.ops.object.text_add(location=loc, rotation=rot)
+    o = bpy.context.active_object
+    o.data.body = body
+    o.data.size = size
+    o.data.extrude = extrude
+    o.data.align_x = "CENTER"
+    o.data.align_y = "CENTER"
+    o.data.resolution_u = 2
+    if FONT.exists():
+        o.data.font = bpy.data.fonts.load(str(FONT), check_existing=True)
+    bpy.ops.object.convert(target="MESH")
+    return finish(bpy.context.active_object, material, parent, smooth=False)
 
 
 def root(name):
@@ -123,216 +146,139 @@ def export(name):
     print(f"[models] wrote {path} ({path.stat().st_size // 1024} KB)")
 
 
-# Blender is Z-up; the exporter converts to Y-up. Models are authored facing -Y (toward the viewer).
+# Blender is Z-up; the exporter converts to Y-up. Models are authored facing -Y (toward the viewer)
+# and fit in roughly a 2.4 m cube around the origin.
+FACE = (math.radians(90), 0, 0)  # rotates a Z-axis primitive to face -Y
 
-# ---------------------------------------------------------------- PolyChat: encrypted chat bubbles
+# ---------------------------------------------------------------- Cortex: an AI desktop assistant
 
-def build_polychat():
+
+def build_cortex():
     reset_scene()
-    r = root("polychat")
-    violet = mat("violet", hex_rgb("#7c3aed"), 0.1, 0.25, hex_rgb("#8b5cf6"), 0.6)
-    cyan = mat("cyan", hex_rgb("#06b6d4"), 0.1, 0.25, hex_rgb("#22d3ee"), 0.6)
+    r = root("cortex")
+    shell = mat("shell", hex_rgb("#e5e7eb"), 0.2, 0.35)
+    screen = mat("screen", hex_rgb("#0b1020"), 0.1, 0.2)
+    wave = mat("wave", hex_rgb("#22d3ee"), 0, 0.2, hex_rgb("#22d3ee"), 4.0)
+    bubble = mat("bubble", hex_rgb("#8b5cf6"), 0.1, 0.25, hex_rgb("#8b5cf6"), 0.8)
     white = mat("white", (1, 1, 1), 0, 0.3, (1, 1, 1), 3.0)
-    gold = mat("gold", hex_rgb("#f5b83d"), 1.0, 0.22)
 
-    sphere(1, (-0.35, 0, 0.35), violet, r, scale=(1.05, 0.34, 0.72))
-    cone(0.22, 0, 0.5, (-0.95, 0, -0.2), violet, r, rot=(0, math.radians(-140), 0))
+    cube((2.1, 0.14, 1.35), (0, 0, 0.3), shell, r, bevel=0.06)
+    cube((1.9, 0.06, 1.15), (0, -0.07, 0.3), screen, r, bevel=0.02)
+    for i, h in enumerate((0.25, 0.55, 0.85, 0.5, 0.7, 0.3, 0.6)):  # voice waveform on the screen
+        cube((0.1, 0.03, h), (-0.6 + i * 0.2, -0.11, 0.3), wave, r, bevel=0.02)
+    cube((0.18, 0.18, 0.5), (0, 0.05, -0.55), shell, r, bevel=0.03)
+    cube((0.9, 0.5, 0.06), (0, 0.05, -0.82), shell, r, bevel=0.03)
+    sphere(0.42, (0.95, -0.2, 1.05), bubble, r, scale=(1.2, 0.45, 0.8))
+    cone(0.12, 0, 0.3, (0.62, -0.2, 0.78), bubble, r, rot=(0, math.radians(-135), 0))
     for i in range(3):
-        sphere(0.1, (-0.7 + i * 0.35, -0.36, 0.35), white, r, segments=16)
-
-    sphere(0.75, (0.55, 0.25, -0.45), cyan, r, scale=(1.0, 0.42, 0.7))
-    cone(0.16, 0, 0.4, (1.05, 0.25, -0.85), cyan, r, rot=(0, math.radians(140), 0))
-
-    cube((0.42, 0.18, 0.34), (0.75, -0.25, 0.75), gold, r, bevel=0.04)
-    torus(0.14, 0.035, (0.75, -0.25, 0.96), gold, r, rot=(math.radians(90), 0, 0))
-    export("polychat")
+        sphere(0.06, (0.8 + i * 0.15, -0.42, 1.05), white, r, segments=12)
+    export("cortex")
 
 
-# ---------------------------------------------------------------- raGG: floating knowledge library
+# ---------------------------------------------------------------- commit-orchestra: an agent-driven git graph
 
-def build_ragg():
+
+def build_orchestra():
     reset_scene()
-    r = root("ragg")
-    random.seed(7)
-    covers = ["#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#a855f7", "#ec4899"]
-    paper = mat("paper", hex_rgb("#f3eee2"), 0, 0.8)
-    z = -0.9
-    for i, c in enumerate(covers):
-        rz = random.uniform(-0.35, 0.35)
-        w, d = random.uniform(1.1, 1.4), random.uniform(0.8, 0.95)
-        cube((w, d, 0.2), (random.uniform(-0.08, 0.08), 0, z), mat(f"cover{i}", hex_rgb(c), 0.1, 0.45), r,
-             rot=(0, 0, rz), bevel=0.025)
-        cube((w - 0.08, d - 0.02, 0.15), (random.uniform(-0.08, 0.08) + 0.04, 0, z), paper, r, rot=(0, 0, rz), bevel=0)
-        z += 0.22
-    glow = mat("glow", hex_rgb("#38bdf8"), 0, 0.2, hex_rgb("#38bdf8"), 4.0)
-    torus(1.25, 0.018, (0, 0, 0.1), glow, r, rot=(math.radians(72), math.radians(12), 0))
-    for i in range(4):
-        a = i / 4 * math.tau
-        cube((0.36, 0.02, 0.46), (math.cos(a) * 1.25, math.sin(a) * 0.4, 0.1 + math.sin(a) * 1.15), paper, r,
-             rot=(math.radians(72), 0, a), bevel=0.005)
-    export("ragg")
+    r = root("orchestra")
+    main = mat("main", hex_rgb("#ff7a3d"), 0.2, 0.3, hex_rgb("#ff7a3d"), 0.6)
+    branch = mat("branch", hex_rgb("#2dd4bf"), 0.2, 0.3, hex_rgb("#2dd4bf"), 0.6)
+    ok = mat("ok", hex_rgb("#22c55e"), 0.1, 0.3, hex_rgb("#22c55e"), 1.5)
+    white = mat("white", (1, 1, 1), 0, 0.3, (1, 1, 1), 2.0)
+
+    trunk = [(-0.4, 0, z) for z in (-1.0, -0.35, 0.3, 0.95)]
+    for a, b in zip(trunk, trunk[1:]):
+        link(a, b, 0.06, main, r)
+    for p in trunk:
+        sphere(0.17, p, main, r, segments=20)
+    side = [(0.45, 0, -0.05), (0.45, 0, 0.55)]
+    link(trunk[1], side[0], 0.06, branch, r)
+    link(side[0], side[1], 0.06, branch, r)
+    link(side[1], trunk[3], 0.06, branch, r)  # merged back
+    for p in side:
+        sphere(0.15, p, branch, r, segments=20)
+    cylinder(0.3, 0.08, (0.95, -0.05, 1.05), ok, r, rot=FACE)  # CI badge with a check mark
+    cube((0.08, 0.04, 0.2), (0.88, -0.12, 1.0), white, r, rot=(0, math.radians(45), 0), bevel=0.01)
+    cube((0.08, 0.04, 0.34), (1.0, -0.12, 1.06), white, r, rot=(0, math.radians(-40), 0), bevel=0.01)
+    export("orchestra")
 
 
-# ---------------------------------------------------------------- EquiClear: ZK crystal + gavel
+# ---------------------------------------------------------------- HireHunt: briefcase + magnifier
 
-def build_equiclear():
+
+def build_hirehunt():
     reset_scene()
-    r = root("equiclear")
-    crystal = mat("crystal", hex_rgb("#2dd4bf"), 0.0, 0.05, hex_rgb("#14b8a6"), 1.4)
-    wood = mat("wood", hex_rgb("#7c4a24"), 0, 0.55)
-    brass = mat("brass", hex_rgb("#d4a64a"), 1, 0.25)
+    r = root("hirehunt")
+    leather = mat("leather", hex_rgb("#8b5a2b"), 0.1, 0.5)
+    strap = mat("strap", hex_rgb("#4a2f17"), 0.1, 0.5)
+    brass = mat("brass", hex_rgb("#e0b252"), 1.0, 0.25)
+    glass = mat("glass", hex_rgb("#7dd3fc"), 0.0, 0.05, hex_rgb("#38bdf8"), 1.2)
+    rim = mat("rim", hex_rgb("#1f2937"), 0.4, 0.3)
 
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.62, location=(0, 0, 0.35))
-    c = bpy.context.active_object
-    c.scale = (0.75, 0.75, 1.5)
-    bpy.ops.object.transform_apply(scale=True)
-    finish(c, crystal, r, smooth=False)
-
-    cylinder(0.75, 0.16, (0, 0, -0.95), wood, r)
-    cylinder(0.62, 0.05, (0, 0, -0.85), brass, r)
-
-    side = (0, math.radians(90), 0)
-    cylinder(0.2, 0.75, (0.95, 0, -0.5), wood, r, rot=side, bevel=0.02)
-    cylinder(0.21, 0.07, (0.62, 0, -0.5), brass, r, rot=side)
-    cylinder(0.21, 0.07, (1.28, 0, -0.5), brass, r, rot=side)
-    lean = math.radians(28)
-    cylinder(0.05, 1.3, (0.95 + 0.65 * math.sin(lean), 0, -0.5 + 0.65 * math.cos(lean)), wood, r, rot=(0, lean, 0))
-    export("equiclear")
+    cube((1.8, 0.6, 1.2), (-0.2, 0.1, -0.35), leather, r, bevel=0.1)
+    cube((1.82, 0.62, 0.1), (-0.2, 0.1, -0.05), strap, r, bevel=0.02)
+    torus(0.25, 0.05, (-0.2, 0.1, 0.35), strap, r, rot=FACE)
+    for x in (-0.75, 0.35):
+        cube((0.16, 0.05, 0.12), (x, -0.22, -0.05), brass, r, bevel=0.01)
+    torus(0.42, 0.07, (0.65, -0.35, 0.55), rim, r, rot=FACE)
+    cylinder(0.4, 0.04, (0.65, -0.35, 0.55), glass, r, rot=FACE)
+    link((0.95, -0.35, 0.25), (1.35, -0.35, -0.2), 0.08, rim, r)
+    export("hirehunt")
 
 
-# ---------------------------------------------------------------- PoolGuard: shield + liquidity drop
+# ---------------------------------------------------------------- swiggy-cli: takeaway box + terminal
 
-def build_poolguard():
+
+def build_swiggy():
     reset_scene()
-    r = root("poolguard")
-    steel = mat("steel", hex_rgb("#cbd5e1"), 1.0, 0.18)
-    green = mat("emerald", hex_rgb("#065f46"), 0.2, 0.3, hex_rgb("#10b981"), 0.8)
-    water = mat("water", hex_rgb("#38bdf8"), 0.0, 0.05, hex_rgb("#0ea5e9"), 2.5)
+    r = root("swiggy")
+    box_mat = mat("box", hex_rgb("#fc8019"), 0.1, 0.45)
+    paper = mat("paper", hex_rgb("#fff3e6"), 0, 0.7)
+    term = mat("term", hex_rgb("#111827"), 0.3, 0.3)
+    bar = mat("bar", hex_rgb("#374151"), 0.3, 0.4)
+    green = mat("green", hex_rgb("#4ade80"), 0, 0.3, hex_rgb("#4ade80"), 3.0)
+    lights = [mat(f"light{i}", hex_rgb(c), 0, 0.3, hex_rgb(c), 2.0) for i, c in enumerate(("#ef4444", "#f59e0b", "#22c55e"))]
 
-    outline = [(-0.8, 0.95), (0, 0.8), (0.8, 0.95), (0.82, 0.3), (0.68, -0.35), (0.38, -0.8), (0, -1.08),
-               (-0.38, -0.8), (-0.68, -0.35), (-0.82, 0.3)]
-
-    def shield(name, scale, depth, y, material):
-        me = bpy.data.meshes.new(name)
-        bm = bmesh.new()
-        verts = [bm.verts.new((x * scale, 0, zz * scale)) for x, zz in outline]
-        bm.faces.new(verts)
-        bmesh.ops.triangulate(bm, faces=bm.faces[:])
-        bm.to_mesh(me)
-        bm.free()
-        o = bpy.data.objects.new(name, me)
-        bpy.context.collection.objects.link(o)
-        o.location.y = y
-        bpy.context.view_layer.objects.active = o
-        o.select_set(True)
-        sol = o.modifiers.new("solidify", "SOLIDIFY")
-        sol.thickness = depth
-        bev = o.modifiers.new("bevel", "BEVEL")
-        bev.width = 0.03
-        bev.segments = 3
-        bev.limit_method = "ANGLE"
-        o.data.materials.append(material)
-        o.parent = r
-        o.select_set(False)
-        return o
-
-    shield("shield_outer", 1.0, 0.2, 0.0, steel)
-    shield("shield_inner", 0.8, 0.1, -0.12, green)
-    sphere(0.3, (0, -0.3, -0.12), water, r, scale=(1, 0.8, 1))
-    cone(0.29, 0, 0.42, (0, -0.3, 0.24), water, r)
-    export("poolguard")
+    cone(0.75, 0.55, 1.1, (-0.55, 0.2, -0.35), box_mat, r, rot=(0, 0, math.radians(45)), verts=4)
+    cube((0.8, 0.8, 0.08), (-0.55, 0.2, 0.25), paper, r, rot=(0, 0, math.radians(45)), bevel=0.02)
+    torus(0.28, 0.035, (-0.55, 0.2, 0.45), paper, r, rot=FACE)
+    cube((1.4, 0.12, 1.0), (0.55, -0.25, 0.2), term, r, bevel=0.06)
+    cube((1.4, 0.14, 0.16), (0.55, -0.25, 0.64), bar, r, bevel=0.03)
+    for i, m in enumerate(lights):
+        sphere(0.045, (0.0 + i * 0.12, -0.33, 0.64), m, r, segments=12)
+    text(">_", (0.3, -0.33, 0.25), green, r, size=0.42)
+    export("swiggy")
 
 
-# ---------------------------------------------------------------- AstraOS: CPU on a circuit board
+# ---------------------------------------------------------------- AgentVault: a vault door for AI agents
 
-def build_astraos():
+
+def build_agentvault():
     reset_scene()
-    r = root("astraos")
-    random.seed(3)
-    pcb = mat("pcb", hex_rgb("#0b2e1f"), 0.1, 0.6)
-    trace = mat("trace", hex_rgb("#fb923c"), 0.0, 0.3, hex_rgb("#fb923c"), 3.0)
-    package = mat("package", hex_rgb("#1f2937"), 0.3, 0.4)
-    die = mat("die", hex_rgb("#94a3b8"), 1.0, 0.15)
-    pin = mat("pin", hex_rgb("#e5b454"), 1.0, 0.3)
+    r = root("agentvault")
+    steel = mat("steel", hex_rgb("#9ca3af"), 1.0, 0.3)
+    dark = mat("vault_dark", hex_rgb("#374151"), 0.8, 0.35)
+    glow = mat("glow", hex_rgb("#a78bfa"), 0, 0.2, hex_rgb("#a78bfa"), 3.0)
 
-    cube((2.4, 2.4, 0.06), (0, 0, -0.1), pcb, r, bevel=0.02)
-    for _ in range(26):
-        horiz = random.random() > 0.5
-        length = random.uniform(0.3, 0.9)
-        edge = random.choice([-1, 1]) * random.uniform(0.85, 1.1)
-        off = random.uniform(-1.05, 1.05)
-        loc = (edge, off, -0.06) if horiz else (off, edge, -0.06)
-        size = (length, 0.025, 0.012) if horiz else (0.025, length, 0.012)
-        cube(size, loc, trace, r, bevel=0)
-
-    cube((1.3, 1.3, 0.14), (0, 0, 0.02), package, r, bevel=0.03)
-    cube((0.7, 0.7, 0.06), (0, 0, 0.11), die, r, bevel=0.015)
-    n = 11
-    for i in range(n):
-        t = -0.55 + i * (1.1 / (n - 1))
-        for sx, sy, rot in ((t, 0.73, 0), (t, -0.73, 0), (0.73, t, 1), (-0.73, t, 1)):
-            size = (0.05, 0.18, 0.025) if rot == 0 else (0.18, 0.05, 0.025)
-            cube(size, (sx, sy, -0.04), pin, r, bevel=0)
-    r.rotation_euler = (math.radians(65), 0, 0)  # tilt the board up toward the viewer
-    export("astraos")
-
-
-# ---------------------------------------------------------------- ml_visualizer: 3D bar chart
-
-def build_mlviz():
-    reset_scene()
-    r = root("mlviz")
-    base = mat("base", hex_rgb("#111827"), 0.4, 0.35)
-    axis = mat("axis", (1, 1, 1), 0, 0.3, (1, 1, 1), 2.0)
-    ramp = ["#6366f1", "#8b5cf6", "#d946ef", "#f43f5e", "#f97316"]
-    ramp_mats = [mat(f"bar{i}", hex_rgb(c), 0.2, 0.3, hex_rgb(c), 0.9) for i, c in enumerate(ramp)]
-
-    cube((2.2, 2.2, 0.08), (0, 0, -0.9), base, r, bevel=0.03)
-    n, step = 5, 0.38
-    for i in range(n):
-        for j in range(n):
-            x, y = (i - 2) * step, (j - 2) * step
-            h = 0.15 + 1.6 * math.exp(-((x - 0.2) ** 2 + (y + 0.1) ** 2) / 0.35)
-            m = ramp_mats[min(4, int(h / 1.75 * 5))]
-            cube((0.26, 0.26, h), (x, y, -0.86 + h / 2), m, r, bevel=0.015)
-    cylinder(0.012, 2.1, (-1.05, -1.05, 0.15), axis, r, bevel=0)
-    cylinder(0.012, 2.1, (0, -1.05, -0.86), axis, r, rot=(0, math.radians(90), 0), bevel=0)
-    cylinder(0.012, 2.1, (-1.05, 0, -0.86), axis, r, rot=(math.radians(90), 0, 0), bevel=0)
-    export("mlviz")
-
-
-# ---------------------------------------------------------------- asteroids
-
-def build_asteroid(seed):
-    reset_scene()
-    r = root(f"asteroid{seed}")
-    rock = mat("rock", hex_rgb("#5b5047"), 0.0, 0.92)
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=1.0)
-    o = bpy.context.active_object
-    bm = bmesh.new()
-    bm.from_mesh(o.data)
-    off = Vector((seed * 13.1, seed * 7.7, seed * 3.3))
-    stretch = Vector((random.uniform(0.7, 1.3), random.uniform(0.7, 1.1), random.uniform(0.6, 1.0)))
-    for v in bm.verts:
-        p = v.co.copy()
-        d = noise.fractal(p * 1.3 + off, 0.6, 2.1, 4) * 0.35
-        crater = max(0.0, noise.cell(p * 2.2 + off) - 0.75) * -0.8
-        v.co = Vector((p.x * stretch.x, p.y * stretch.y, p.z * stretch.z)) * (1 + d + crater)
-    bm.to_mesh(o.data)
-    bm.free()
-    dec = o.modifiers.new("decimate", "DECIMATE")
-    dec.ratio = 0.25
-    finish(o, rock, r, smooth=False)
-    export(f"asteroid{seed}")
+    cube((2.1, 0.3, 2.1), (0, 0.2, 0), dark, r, bevel=0.08)
+    cylinder(0.92, 0.3, (0, -0.05, 0), steel, r, rot=FACE)
+    torus(0.92, 0.07, (0, -0.2, 0), dark, r, rot=FACE)
+    for i in range(10):  # bolts around the rim
+        a = i / 10 * math.tau
+        cylinder(0.06, 0.1, (math.cos(a) * 0.78, -0.22, math.sin(a) * 0.78), dark, r, rot=FACE)
+    torus(0.38, 0.045, (0, -0.32, 0), steel, r, rot=FACE)
+    for i in range(3):  # handle wheel spokes
+        a = i / 3 * math.pi
+        link((math.cos(a) * 0.42, -0.32, math.sin(a) * 0.42), (-math.cos(a) * 0.42, -0.32, -math.sin(a) * 0.42),
+             0.035, steel, r)
+    cylinder(0.12, 0.14, (0, -0.34, 0), glow, r, rot=FACE)
+    export("agentvault")
 
 
 if __name__ == "__main__":
-    build_polychat()
-    build_ragg()
-    build_equiclear()
-    build_poolguard()
-    build_astraos()
-    build_mlviz()
-    for s in (1, 2, 3):
-        random.seed(s)
-        build_asteroid(s)
+    # Featured projects, in island-gallery order. Keep in sync with `projects` in src/content.ts.
+    build_cortex()
+    build_orchestra()
+    build_hirehunt()
+    build_swiggy()
+    build_agentvault()

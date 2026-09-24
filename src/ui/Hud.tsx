@@ -6,7 +6,8 @@ import { quality } from "../game/quality";
 import type { WorldData } from "../game/World";
 import { getState, setState, useStore } from "../store";
 import { Moon, Reset, SoundOff, SoundOn, Sun } from "./icons";
-import { zoneInfo } from "./Panels";
+import { projects } from "../content";
+import { Chips, ProjectLinks, zoneInfo } from "./Panels";
 import { LapTimer, Toast, Trophies } from "./Trophies";
 
 function TopBar() {
@@ -20,7 +21,7 @@ function TopBar() {
         </span>
         <div>
           <strong>{person.name}</strong>
-          <span>{person.role} · Web3 · AI · Systems</span>
+          <span>{person.role}</span>
         </div>
       </div>
       <nav className="topbar__actions" aria-label="Settings">
@@ -106,10 +107,34 @@ function Hint() {
   );
 }
 
+/** Parked at a project board: show the project itself, not just a prompt. */
+function ProjectCard({ slug }: { slug: string }) {
+  const p = projects.find((q) => q.slug === slug);
+  if (!p) return null;
+  return (
+    <div className="project-card" style={{ ["--accent" as string]: p.color }} key={slug}>
+      <img src={`/world/thumbs/${p.slug}.webp`} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />
+      <div className="project-card__body">
+        <p className="kicker">{p.tagline}</p>
+        <h3>{p.title}</h3>
+        <p>{p.oneLiner}</p>
+        <Chips items={p.tech} />
+        <div className="project-card__actions">
+          <button className="btn btn--small btn--primary" onClick={() => setState({ panel: `project:${p.slug}` })}>
+            Case study {quality.touch ? "" : <kbd>Enter</kbd>}
+          </button>
+          <ProjectLinks p={p} small />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ZonePrompt() {
   const zone = useStore((s) => s.zone);
   const panel = useStore((s) => s.panel);
   if (!zone || panel) return null;
+  if (zone.startsWith("project:")) return <ProjectCard slug={zone.slice(8)} />;
   const info = zoneInfo(zone);
   return (
     <button className="prompt" onClick={() => setState({ panel: zone })}>
@@ -144,11 +169,21 @@ function Minimap({ data }: { data: WorldData | null }) {
       ctx.beginPath();
       ctx.arc(size / 2, size / 2, ((data.islandRadius) / R) * (size / 2 - 6), 0, Math.PI * 2);
       ctx.fill();
+      const k = (size / 2 - 6) / R;
       ctx.strokeStyle = "#3b3f4b";
-      ctx.lineWidth = (3.4 / R) * (size / 2 - 6);
+      ctx.lineWidth = (data.roads.ringOut - data.roads.ringIn) * k;
       ctx.beginPath();
-      ctx.arc(size / 2, size / 2, (14.7 / R) * (size / 2 - 6), 0, Math.PI * 2);
+      ctx.arc(size / 2, size / 2, ((data.roads.ringIn + data.roads.ringOut) / 2) * k, 0, Math.PI * 2);
       ctx.stroke();
+      // downtown block
+      const [tx, , tz] = data.town.center;
+      const [dx, dy] = toMap(tx, tz);
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.rotate(-data.town.rotY);
+      ctx.fillStyle = "#9aa3b2";
+      ctx.fillRect((-data.town.span / 2) * k, (-data.town.span / 2) * k, data.town.span * k, data.town.span * k);
+      ctx.restore();
       const zone = getState().zone;
       for (const z of data.zones) {
         const [x, y] = toMap(z.pos[0], z.pos[2]);

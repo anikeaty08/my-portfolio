@@ -6,6 +6,8 @@ import * as THREE from "three";
 import { bump, horn, splash } from "../audio";
 import { getState, setState, useStore } from "../store";
 import { SKINS, unlock } from "./achievements";
+import { bakeRelativeTo } from "./bake";
+import { CarLights, takeLampMaterials } from "./CarLights";
 import { input, pollGamepad, telemetry } from "./controls";
 import { effects } from "./Effects";
 import { teleportTarget } from "./Gameplay";
@@ -41,6 +43,10 @@ const TUNE = {
 const CAM_DIST = 22.5;
 const CAM_PITCH = 0.64; // radians above the horizon
 const CAM_YAW = Math.PI / 4; // looking from +X/+Z
+/** Before start the camera holds the Blender hero-render framing, then swoops down to the car. */
+const INTRO_FROM = new THREE.Vector3(58, 44, 58); // the Blender hero camera, in three.js space
+const INTRO_LOOK = new THREE.Vector3(0, 0, -4);
+const INTRO_SECONDS = 2.8;
 
 export function Car({ data }: { data: WorldData }) {
   const { scene } = useGLTF("/world/car.glb");
@@ -49,14 +55,15 @@ export function Car({ data }: { data: WorldData }) {
   const body = useRef<RapierRigidBody>(null);
   const controller = useRef<VehicleController | null>(null);
   const wheelRefs = useRef<(THREE.Object3D | null)[]>([]);
-  const headlights = useRef<THREE.Group>(null);
   const skin = useStore((s) => s.skin);
 
-  const { chassis, wheels, paint } = useMemo(() => {
-    const chassis = scene.getObjectByName("body")!.clone();
-    const wheel = scene.getObjectByName("wheel")!.clone();
-    wheel.position.set(0, 0, 0);
-    chassis.position.set(0, 0, 0);
+  const { chassis, wheels, paint, lamps } = useMemo(() => {
+    // Bake out the meshopt dequantization transforms; the chassis stays in the car frame.
+    const chassis = bakeRelativeTo(scene.getObjectByName("body")!, new THREE.Matrix4());
+    const wheel = bakeRelativeTo(scene.getObjectByName("wheel")!, new THREE.Matrix4());
+    // The wheel is modeled off to the side; recenter it on its axle.
+    const center = new THREE.Box3().setFromObject(wheel).getCenter(new THREE.Vector3());
+    wheel.children.forEach((m) => (m as THREE.Mesh).geometry.translate(-center.x, -center.y, -center.z));
     let paint: THREE.MeshStandardMaterial | null = null;
     // The body paint gets its own material so skins can recolor it.
     const swap = (mat: THREE.Material) => (mat.name === "orange" ? (paint ??= (mat as THREE.MeshStandardMaterial).clone()) : mat);
@@ -70,7 +77,8 @@ export function Car({ data }: { data: WorldData }) {
       });
     }
     const wheels = WHEELS.map(() => wheel.clone());
-    return { chassis, wheels, paint: paint as THREE.MeshStandardMaterial | null };
+    const lamps = takeLampMaterials(chassis);
+    return { chassis, wheels, paint: paint as THREE.MeshStandardMaterial | null, lamps };
   }, [scene]);
 
   useEffect(() => {
@@ -138,7 +146,7 @@ export function Car({ data }: { data: WorldData }) {
   });
 
   // ---------------------------------------------------------------- camera: drag to orbit, wheel to zoom
-  const cam = useRef({ yaw: CAM_YAW, yawTarget: CAM_YAW, zoom: window.innerWidth < window.innerHeight ? 1.35 : 1, speedZoom: 0 });
+  const cam = useRef({ yaw: CAM_YAW, yawTarget: CAM_YAW, zoom: window.innerWidth < window.innerHeight ? 1.35 : 1, speedZoom: 0, intro: 0 });
   useEffect(() => {
     const el = gl.domElement;
     let dragging: { x: number; id: number } | null = null;
@@ -295,12 +303,20 @@ export function Car({ data }: { data: WorldData }) {
     tmp.target.set(Math.sin(c.yaw) * Math.cos(CAM_PITCH), Math.sin(CAM_PITCH), Math.cos(c.yaw) * Math.cos(CAM_PITCH)).multiplyScalar(dist);
     tmp.lookTarget.set(p.x + vel.x * 0.35, p.y, p.z + vel.z * 0.35);
     tmp.target.add(tmp.lookTarget);
-    const k = 1 - Math.exp(-delta * 5);
-    state.camera.position.lerp(tmp.target, k);
-    tmp.look.lerp(tmp.lookTarget, k);
-    camera.lookAt(tmp.look);
+    if (c.intro < 1) {
+      // Opening shot: hold the hero framing until start, then an eased swoop onto the car.
+      if (s.started) c.intro = Math.min(1, c.intro + delta / INTRO_SECONDS);
+      const e = c.intro < 0.5 ? 4 * c.intro ** 3 : 1 - (-2 * c.intro + 2) ** 3 / 2;
+      state.camera.position.lerpVectors(INTRO_FROM, tmp.target, e);
+      tmp.look.lerpVectors(INTRO_LOOK, tmp.lookTarget, e);
+      camera.lookAt(tmp.look);
+    } else {
+      const k = 1 - Math.exp(-delta * 5);
+      state.camera.position.lerp(tmp.target, k);
+      tmp.look.lerp(tmp.lookTarget, k);
+      camera.lookAt(tmp.look);
+    }
 
-    if (headlights.current) headlights.current.visible = s.night;
   });
 
   return (
@@ -328,13 +344,11 @@ export function Car({ data }: { data: WorldData }) {
           position={w.pos}
         />
       ))}
-      <group ref={headlights} visible={false}>
-        {[-0.42, 0.42].map((z) => (
-          <spotLight key={z} position={[1.3, 0.2, z]} angle={0.5} penumbra={0.6} intensity={40} distance={22} color="#ffe6b0">
-            <object3D attach="target" position={[8, -1.2, z]} />
-          </spotLight>
-        ))}
-      </group>
+      <CarLights
+        lamps={lamps}
+        spot
+        braking={() => input.brake || (input.throttle < 0 && telemetry.speed > 1) || (input.throttle > 0 && telemetry.speed < -1)}
+      />
     </RigidBody>
   );
 }

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { setSound } from "./audio";
 import { markSeen, trackKonami } from "./game/achievements";
 import { bindKeyboard, input } from "./game/controls";
+import { quality } from "./game/quality";
 import type { WorldData } from "./game/World";
 import { getState, setState, useStore } from "./store";
 import { Classic } from "./ui/Classic";
@@ -11,21 +12,10 @@ import { Panel } from "./ui/Panels";
 
 const Game = lazy(() => import("./game/Game").then((m) => ({ default: m.Game })));
 
-function hasWebGL() {
-  try {
-    const c = document.createElement("canvas");
-    const gl = c.getContext("webgl2") || c.getContext("webgl");
-    gl?.getExtension("WEBGL_lose_context")?.loseContext();
-    return Boolean(gl);
-  } catch {
-    return false;
-  }
-}
-
 export default function App() {
   const classic = useStore((s) => s.classic);
   const started = useStore((s) => s.started);
-  const [webgl, setWebgl] = useState(hasWebGL);
+  const [webgl, setWebgl] = useState(quality.webgl2);
   const [data, setData] = useState<WorldData | null>(null);
 
   useEffect(() => {

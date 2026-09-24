@@ -1,0 +1,7 @@
+[
+  { "group": "Languages", "color": "#ff7a3d", "items": ["TypeScript", "Python", "Java", "C", "Rust", "Solidity"] },
+  { "group": "AI & Agents", "color": "#34d399", "items": ["LLM agents", "MCP", "LangGraph", "RAG", "PyTorch", "scikit-learn"] },
+  { "group": "Web", "color": "#38bdf8", "items": ["React", "Next.js", "Node.js", "FastAPI", "Electron", "Three.js"] },
+  { "group": "Web3", "color": "#a78bfa", "items": ["0G", "Polygon", "Aleo / Leo", "Celo", "Hardhat", "IPFS"] },
+  { "group": "Systems", "color": "#fbbf24", "items": ["x86_64", "Linux", "Docker", "PostgreSQL", "Redis", "QEMU"] }
+]

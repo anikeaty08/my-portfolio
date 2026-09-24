@@ -1,0 +1,103 @@
+[
+  {
+    "slug": "cortex",
+    "title": "Cortex",
+    "tagline": "AI desktop assistant",
+    "oneLiner": "Control your Windows desktop with natural language — an installable assistant that turns plain requests into real actions on your machine.",
+    "tech": ["Electron", "LLM agents", "Desktop automation"],
+    "links": {},
+    "color": "#22d3ee",
+    "caseStudy": {
+      "problem": "Everyday desktop work is a chain of small clicks and context switches that a capable agent could do for you.",
+      "approach": [
+        "Natural-language requests interpreted by an LLM agent",
+        "Agent actions mapped onto real desktop operations",
+        "Packaged and installed as a native Windows desktop app"
+      ],
+      "results": ["Runs as an installed Windows application"]
+    }
+  },
+  {
+    "slug": "orchestra",
+    "title": "commit-orchestra",
+    "tagline": "Strict AI-agent Git CLI",
+    "oneLiner": "An agent reviews your changes, blocks unsafe commits and secrets, writes the commit message, pushes a branch and opens the pull request.",
+    "tech": ["TypeScript", "Node.js", "GitHub API", "npm + PyPI"],
+    "links": {
+      "github": "https://github.com/anikeaty08/orchestra-agent",
+      "npm": "https://www.npmjs.com/package/commit-orchestra",
+      "pypi": "https://pypi.org/project/commit-orchestra/"
+    },
+    "color": "#ff7a3d",
+    "caseStudy": {
+      "problem": "AI commit tools that silently fall back to weaker behaviour, or push secrets, aren't safe to automate.",
+      "approach": [
+        "Agent review of tracked changes before anything touches Git",
+        "Hard blocks on .env files and detected secrets",
+        "Branch + pull request by default, plus a scheduled watch mode"
+      ],
+      "results": [
+        "Published to npm and PyPI",
+        "Fails closed: no configured agent means no Git changes"
+      ]
+    }
+  },
+  {
+    "slug": "hirehunt",
+    "title": "HireHunt",
+    "tagline": "Programmable job-search framework",
+    "oneLiner": "Aggregates 10+ job sources — Naukri, LinkedIn, Indeed, Internshala, FAANG careers — into one normalized schema, usable from a CLI or by AI agents over MCP.",
+    "tech": ["Python", "Async orchestration", "MCP server", "CLI"],
+    "links": { "github": "https://github.com/anikeaty08/hireHunt" },
+    "color": "#fbbf24",
+    "caseStudy": {
+      "problem": "Listings are scattered across sites with different formats, reliability and rate limits.",
+      "approach": [
+        "Normalized job schema with a pluggable, self-describing source registry",
+        "Sync and async orchestration with retry, caching, dedup and ranking",
+        "Graceful partial results when a single source fails",
+        "Fixture-based parser contract tests and benchmark reporting"
+      ],
+      "results": ["10+ sources across India and global markets", "Exposed to agents through an MCP server"]
+    }
+  },
+  {
+    "slug": "swiggy",
+    "title": "swiggy-cli",
+    "tagline": "Swiggy for terminals and agents",
+    "oneLiner": "A CLI over Swiggy's MCP servers for Food, Instamart and Dineout — stable JSON output for scripts and agent loops, plus a Telegram ordering agent.",
+    "tech": ["TypeScript", "MCP", "OAuth", "Telegram bot"],
+    "links": { "github": "https://github.com/anikeaty08/swiggy-cli" },
+    "color": "#fb7185",
+    "caseStudy": {
+      "problem": "Swiggy's MCP servers are tool-native but have no dependable terminal or scripting surface.",
+      "approach": [
+        "Human-friendly commands on top of a generic discover-and-call layer",
+        "A stable --json envelope for automation and agent loops",
+        "Safety rails around destructive actions such as placing orders"
+      ],
+      "results": [
+        "Search, cart, checkout and tracking across three Swiggy products",
+        "A Telegram food-ordering agent on isolated per-user profiles"
+      ]
+    }
+  },
+  {
+    "slug": "agentvault",
+    "title": "AgentVault",
+    "tagline": "Trust layer for AI agents",
+    "oneLiner": "Launch, govern and verify AI agents on 0G: tokenized ownership, scoped permissions and spending limits, encrypted state and auditable actions.",
+    "tech": ["TypeScript", "0G Chain", "0G Storage", "Smart contracts"],
+    "links": { "github": "https://github.com/anikeaty08/AgentVault" },
+    "color": "#a78bfa",
+    "caseStudy": {
+      "problem": "Once agents hold money and permissions, users need to know who owns an agent and exactly what it may do.",
+      "approach": [
+        "Agents minted as Agentic IDs with scoped permissions and spending limits",
+        "Encrypted manifests and state on 0G Storage",
+        "Governance actions and trust metadata recorded on-chain"
+      ],
+      "results": ["A launchpad plus an operational control plane for agents", "Agents can be paused, verified and monetized safely"]
+    }
+  }
+]

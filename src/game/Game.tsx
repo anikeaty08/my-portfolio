@@ -8,6 +8,7 @@ import { Car } from "./Car";
 import { Effects } from "./Effects";
 import { Gameplay } from "./Gameplay";
 import { Nature } from "./Nature";
+import { Traffic } from "./Traffic";
 import { telemetry } from "./controls";
 import { quality } from "./quality";
 import { useWorldData, World } from "./World";
@@ -26,7 +27,7 @@ function Environment() {
 
   useEffect(() => {
     scene.background = new THREE.Color(DAY.sky);
-    scene.fog = new THREE.Fog(DAY.sky, 70, 170);
+    scene.fog = new THREE.Fog(DAY.sky, 90, 260);
   }, [scene]);
 
   useFrame((_, delta) => {
@@ -84,6 +85,7 @@ function Level() {
         <World data={data} />
         <Car data={data} />
         <Gameplay data={data} />
+        <Traffic data={data} />
       </Physics>
       <Effects />
     </>
@@ -98,7 +100,7 @@ export function Game({ onLost }: { onLost: () => void }) {
       shadows={quality.shadows}
       dpr={dpr}
       gl={{ antialias: quality.antialias, powerPreference: "high-performance" }}
-      camera={{ fov: 38, near: 0.5, far: 400, position: [30, 30, 30] }}
+      camera={{ fov: 38, near: 0.5, far: 500, position: [58, 44, 58] }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
         gl.toneMappingExposure = 1.05;

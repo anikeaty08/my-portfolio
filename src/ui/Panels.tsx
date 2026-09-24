@@ -1,6 +1,6 @@
 import emailjs from "@emailjs/browser";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { about, person, projects, skills, type Project } from "../content";
+import { about, experience, person, projects, skills, type Project } from "../content";
 import { setState, useStore, type ZoneId } from "../store";
 
 const EMAIL_SERVICE = import.meta.env.VITE_EMAILJS_SERVICE_ID?.trim() ?? "";
@@ -33,6 +33,48 @@ export function Chips({ items }: { items: string[] }) {
   );
 }
 
+/** Link buttons for a project, in a consistent order. */
+export function ProjectLinks({ p, small }: { p: Project; small?: boolean }) {
+  const size = small ? " btn--small" : "";
+  const links = [
+    p.links.live && { href: p.links.live, label: "Live" },
+    p.links.github && { href: p.links.github, label: "GitHub" },
+    p.links.npm && { href: p.links.npm, label: "npm" },
+    p.links.pypi && { href: p.links.pypi, label: "PyPI" },
+  ].filter(Boolean) as { href: string; label: string }[];
+  if (!links.length) return null;
+  return (
+    <div className="actions">
+      {links.map((l, i) => (
+        <a key={l.label} className={`btn${size}${i === 0 ? " btn--primary" : ""}`} href={l.href} target="_blank" rel="noreferrer">
+          {l.label} ↗
+        </a>
+      ))}
+    </div>
+  );
+}
+
+export function ExperienceList() {
+  return (
+    <ul className="timeline">
+      {experience.map((e) => (
+        <li key={e.org + e.role}>
+          <div className="timeline__head">
+            <strong>{e.role}</strong>
+            <span>{e.dates}</span>
+          </div>
+          <p className="timeline__org">{e.org}</p>
+          <ul className="ticks">
+            {e.points.map((pt) => (
+              <li key={pt}>{pt}</li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function ProjectBody({ p }: { p: Project }) {
   return (
     <>
@@ -52,18 +94,7 @@ export function ProjectBody({ p }: { p: Project }) {
           <li key={a}>{a}</li>
         ))}
       </ul>
-      <div className="actions">
-        {p.links.live && (
-          <a className="btn btn--primary" href={p.links.live} target="_blank" rel="noreferrer">
-            Open live ↗
-          </a>
-        )}
-        {p.links.github && (
-          <a className="btn" href={p.links.github} target="_blank" rel="noreferrer">
-            Source code ↗
-          </a>
-        )}
-      </div>
+      <ProjectLinks p={p} />
     </>
   );
 }
@@ -87,6 +118,8 @@ export function AboutBody() {
           <li key={h}>{h}</li>
         ))}
       </ul>
+      <h3>Experience</h3>
+      <ExperienceList />
       <p className="muted">
         {person.education} · {person.location} · {person.status}
       </p>
@@ -97,7 +130,7 @@ export function AboutBody() {
 export function SkillsBody() {
   return (
     <>
-      <p className="lead">The stack I reach for. Blocks outside are breakable — go on.</p>
+      <p className="lead">The stack I reach for, grouped the same way as the scoreboard outside.</p>
       {skills.map((s) => (
         <div key={s.orbit} className="skill-group">
           <h3>{s.orbit}</h3>
@@ -136,7 +169,7 @@ export function ContactBody() {
 
   return (
     <>
-      <p className="lead">Internship, collab, or just want to say the car handles badly? Drop a line.</p>
+      <p className="lead">Hiring, collaborating, or curious about a project? I usually reply within a day.</p>
       <form className="form" onSubmit={submit}>
         <label>
           Name
