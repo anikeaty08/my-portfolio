@@ -338,7 +338,7 @@ for i, p in enumerate(PROJECTS):
     pad.name = f"pad_{p['slug']}"
     animated.append(pad.name)
     zones.append({"id": f"project:{p['slug']}", "kind": "project", "slug": p["slug"], "pos": t3((pad_at.x, pad_at.y, GROUND)),
-                  "radius": 1.4})
+                  "radius": 1.9})
 
 sign_at = Vector((PX, PY, 0)) - VIEW * 1.6
 text_mesh("PROJECTS", (sign_at.x, sign_at.y, GROUND + 4.6), ORANGE_GLOW, size=1.2, extrude=0.16,
@@ -843,6 +843,49 @@ ramp(polar(46, -8, 0), -8 + 90)
 ramp(polar(44, 250, 0), 250 - 90)
 ramp(polar(56, 60, 0), 60 + 180)
 
+# ---------------------------------------------------------------- live board + MCP kiosk
+
+
+def standing_board(center, width, height, bottom, accent_mat, name=None):
+    """A framed screen on two posts, facing the game camera. Returns the screen centre (Blender coords)."""
+    face = math.atan2(VIEW.y, VIEW.x) + math.pi / 2
+    side = Vector((-VIEW.y, VIEW.x, 0))
+    mid_z = bottom + height / 2
+    for s_ in (-1, 1):
+        post = center + side * (s_ * (width / 2 - 0.35))
+        cyl(0.1, mid_z - GROUND, (post.x, post.y, GROUND + (mid_z - GROUND) / 2), METAL, verts=10)
+        static_cyl(Vector((post.x, post.y, GROUND + 1)), 0.2, 2)
+    box((width, 0.24, height), (center.x, center.y, mid_z), DARK, rot_z=face, bevel=0.1)
+    screen_at = center + VIEW * 0.13
+    box((width - 0.3, 0.04, height - 0.3), (screen_at.x, screen_at.y, mid_z), SCREEN, rot_z=face)
+    bar = center + VIEW * 0.15
+    box((width - 0.3, 0.04, 0.12), (bar.x, bar.y, mid_z + height / 2 - 0.22), accent_mat, rot_z=face)
+    return Vector((screen_at.x, screen_at.y, mid_z)), face
+
+
+# The live board: three.js paints GitHub / npm / PyPI data onto its screen at runtime.
+LIVE_AT = polar(ROAD_OUT + 6.5, -78, 0)
+live_screen, live_face = standing_board(LIVE_AT, 6.0, 3.4, GROUND + 1.4, mat("live_accent", "#22c55e", 0.4, emit=3))
+LIVE_BOARD = {"pos": t3(live_screen + VIEW * 0.05), "rotY": round(live_face, 4), "w": 5.6, "h": 3.0}
+clear(LIVE_AT.x, LIVE_AT.y, 4.5)
+
+# The MCP kiosk: plug an AI assistant into this portfolio.
+MCP_AT = polar(ROAD_OUT + 7.5, 24, 0)
+mcp_screen, mcp_face = standing_board(MCP_AT, 4.6, 2.6, GROUND + 1.3, mat("mcp_accent", "#a78bfa", 0.4, emit=3))
+rot = (math.radians(90), 0, mcp_face)
+t = mcp_screen + VIEW * 0.05
+text_mesh("CONNECT YOUR AI", (t.x, t.y, mcp_screen.z + 0.45), mat("mcp_title", "#c4b5fd", 0.4, emit=3), size=0.36,
+          extrude=0.02, rot=rot)
+text_mesh("MCP server", (t.x, t.y, mcp_screen.z - 0.05), SCREEN_TEXT, size=0.24, extrude=0.02, rot=rot)
+text_mesh("anikeaty08.tech/api/mcp", (t.x, t.y, mcp_screen.z - 0.55), mat("mcp_url", "#9fb3c8", 0.5, emit=1.0),
+          size=0.19, extrude=0.015, rot=rot)
+mcp_pad_at = MCP_AT + VIEW * 3.0
+pad = cyl(1.3, 0.03, (mcp_pad_at.x, mcp_pad_at.y, GROUND + 0.11), PAD, verts=40)
+pad.name = "pad_mcp"
+animated.append(pad.name)
+zones.append({"id": "mcp", "kind": "mcp", "pos": t3((mcp_pad_at.x, mcp_pad_at.y, GROUND)), "radius": 1.6})
+clear(MCP_AT.x, MCP_AT.y, 4.0)
+
 # ---------------------------------------------------------------- trees and rocks
 
 
@@ -937,6 +980,69 @@ for d in dynamic:
         d["pos"] = t3(loc)
         d["quat"] = [round(q.x, 5), round(q.z, 5), round(-q.y, 5), round(q.w, 5)]
 
+# ---------------------------------------------------------------- road graph (for the autopilot)
+# Nodes sit on the centre lines of the drivable roads; every interactive zone gets a node on its pad,
+# linked to the nearest road node. three.js runs A* over this and drives the car along the result.
+
+
+def road_graph():
+    nodes, edges = [], set()
+
+    def node(x, y):
+        nodes.append((x, y))
+        return len(nodes) - 1
+
+    def link(a, b):
+        if a != b:
+            edges.add((min(a, b), max(a, b)))
+
+    ring = [node(math.cos(math.radians(k * 7.5)) * ROAD_MID, math.sin(math.radians(k * 7.5)) * ROAD_MID) for k in range(48)]
+    for k in range(48):
+        link(ring[k], ring[(k + 1) % 48])
+
+    def at_deg(deg):
+        return ring[int(round((deg % 360) / 7.5)) % 48]
+
+    centre = node(0, 0)
+    for deg in (0, 90, 180, 270):
+        inner = polar(ROAD_IN - 1.2, deg)
+        n_in = node(inner.x, inner.y)
+        link(centre, n_in)
+        link(n_in, at_deg(deg))
+        end = polar(ROAD_OUT + spoke_len, deg)
+        link(at_deg(deg), node(end.x, end.y))
+
+    grid = {}
+    for u in lines:
+        for v in lines:
+            p = town(u, v)
+            grid[(u, v)] = node(p.x, p.y)
+    for a in range(len(lines)):
+        for b in range(len(lines)):
+            if a + 1 < len(lines):
+                link(grid[(lines[a], lines[b])], grid[(lines[a + 1], lines[b])])
+            if b + 1 < len(lines):
+                link(grid[(lines[a], lines[b])], grid[(lines[a], lines[b + 1])])
+    link(at_deg(TOWN_DEG), grid[(lines[0], lines[1])])  # the avenue enters the grid here
+
+    zone_nodes = {"downtown": grid[(lines[1], lines[1])]}
+    road_count = len(nodes)
+    for z in zones:
+        if z["kind"] in ("checkpoint", "egg"):
+            continue
+        x, y = z["pos"][0], -z["pos"][2]  # back to Blender x/y
+        n = node(x, y)
+        nearest = min(range(road_count), key=lambda k: (nodes[k][0] - x) ** 2 + (nodes[k][1] - y) ** 2)
+        link(n, nearest)
+        zone_nodes[z["id"]] = n
+    return {
+        "nodes": [[round(x, 2), round(-y, 2)] for x, y in nodes],
+        "edges": sorted(edges),
+        "zoneNodes": zone_nodes,
+        "trafficLight": [round(tl.x, 2), round(-tl.y, 2)],
+    }
+
+
 meta = {
     "ground": GROUND,
     "islandRadius": ISLAND_R,
@@ -949,6 +1055,8 @@ meta = {
     "town": {"center": t3(TOWN_C), "span": SPAN, "rotY": round(T_ROT, 4)},
     "clearings": [[round(x, 3), round(-y, 3), r] for x, y, r in clearings],
     "shore": shore_radii(),
+    "roadGraph": road_graph(),
+    "liveBoard": LIVE_BOARD,
 }
 (OUT / "world.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
 print(f"[world] {len(colliders)} colliders, {len(dynamic)} dynamic props, {len(zones)} zones")

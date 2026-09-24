@@ -7,7 +7,9 @@ import { useStore } from "../store";
 import { Car } from "./Car";
 import { Effects } from "./Effects";
 import { Gameplay } from "./Gameplay";
+import { LiveBoard } from "./LiveBoard";
 import { Nature } from "./Nature";
+import { Pilot } from "./Pilot";
 import { Traffic } from "./Traffic";
 import { telemetry } from "./controls";
 import { quality } from "./quality";
@@ -86,8 +88,10 @@ function Level() {
         <Car data={data} />
         <Gameplay data={data} />
         <Traffic data={data} />
+        <Pilot data={data} />
       </Physics>
       <Effects />
+      <LiveBoard data={data} />
     </>
   );
 }

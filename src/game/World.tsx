@@ -8,6 +8,7 @@ import { getState } from "../store";
 import { progress } from "./achievements";
 import { telemetry } from "./controls";
 import { bakeRelativeTo, frameFrom, toFloat } from "./bake";
+import { lightPhase } from "./signals";
 import { wind } from "./wind";
 
 // ---------------------------------------------------------------- world.json (written by build_world.py)
@@ -17,7 +18,7 @@ type StaticCollider =
   | { shape: "box"; pos: Vec3; half: Vec3; rotY?: number; quat?: [number, number, number, number] }
   | { shape: "cyl"; pos: Vec3; radius: number; halfHeight: number }
   | { shape: "trimesh"; node: string };
-export type ZoneKind = "project" | "about" | "skills" | "contact" | "lighthouse" | "bowling" | "checkpoint" | "egg";
+export type ZoneKind = "project" | "about" | "skills" | "contact" | "lighthouse" | "bowling" | "mcp" | "checkpoint" | "egg";
 export type Zone = { id: string; kind: ZoneKind; slug?: string; pos: Vec3; radius: number };
 type DynamicBase = { node: string; group: string; mass: number; /** Start transform (the Blender origin), three.js space. */ pos: Vec3; quat: [number, number, number, number] };
 type DynamicDef =
@@ -37,6 +38,10 @@ export type WorldData = {
   /** Sand outline radius at 64 angles (theta = atan2(z, x)). */
   shore: number[];
   town: { center: Vec3; span: number; rotY: number };
+  /** Drivable road centre lines, for the autopilot. Coordinates are three.js x/z. */
+  roadGraph: { nodes: [number, number][]; edges: [number, number][]; zoneNodes: Record<string, number>; trafficLight: [number, number] };
+  /** Screen of the live GitHub/npm board (three.js space). */
+  liveBoard: { pos: Vec3; rotY: number; w: number; h: number };
 };
 
 export function useWorldData(): WorldData {
@@ -45,7 +50,7 @@ export function useWorldData(): WorldData {
 }
 
 /** Zones you park on to open a panel (the rest are silent triggers). */
-export const INTERACTIVE: ZoneKind[] = ["project", "about", "skills", "contact", "lighthouse", "bowling"];
+export const INTERACTIVE: ZoneKind[] = ["project", "about", "skills", "contact", "lighthouse", "bowling", "mcp"];
 
 // ---------------------------------------------------------------- props registry (read by gameplay)
 
@@ -286,8 +291,7 @@ function Animator({ animated }: { animated: Map<string, THREE.Object3D> }) {
       }
     }
     for (const m of windowMats) m.emissiveIntensity = night ? 2.4 : 0.35;
-    // Traffic light: green 3 s, amber 1 s, red 3 s.
-    const phase = t % 7;
+    const phase = lightPhase(t);
     const lamp = (name: string, on: boolean) => {
       const n = animated.get(name) as THREE.Mesh | undefined;
       if (n) (n.material as THREE.MeshStandardMaterial).emissiveIntensity = on ? 6 : 0.15;
@@ -304,7 +308,7 @@ function Animator({ animated }: { animated: Map<string, THREE.Object3D> }) {
       if (name.startsWith("pad_")) {
         const mat = (node as THREE.Mesh).material as THREE.MeshStandardMaterial;
         const id = name.slice(4);
-        const zoneId = ["skills", "about", "contact", "lighthouse", "bowling"].includes(id) ? id : `project:${id}`;
+        const zoneId = ["skills", "about", "contact", "lighthouse", "bowling", "mcp"].includes(id) ? id : `project:${id}`;
         const on = zone === zoneId;
         mat.emissiveIntensity = on ? 3.2 : 0.9 + Math.sin(t * 2.4 + node.position.x) * 0.45;
         const s = on ? 1.08 : 1;

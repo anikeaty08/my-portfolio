@@ -8,6 +8,7 @@ import { getState, setState, useStore } from "../store";
 import { Moon, Reset, SoundOff, SoundOn, Sun } from "./icons";
 import { projects } from "../content";
 import { Chips, ProjectLinks, zoneInfo } from "./Panels";
+import { PilotBar, PilotTrace } from "./Pilot";
 import { LapTimer, Toast, Trophies } from "./Trophies";
 
 function TopBar() {
@@ -65,6 +66,9 @@ const QUICK: { id: string; label: string }[] = [
 function QuickMenu() {
   return (
     <nav className="quick" aria-label="Jump to">
+      <button className="quick__pilot" onClick={() => setState({ pilotBar: true, panel: null })} title="Autopilot (Tab)">
+        Autopilot
+      </button>
       <span>Jump to</span>
       {QUICK.map((q) => (
         <button key={q.id} onClick={() => setState({ teleport: { key: Date.now(), zone: q.id }, panel: q.id === "bowling" ? null : q.id })}>
@@ -100,7 +104,7 @@ function Hint() {
           <kbd>W</kbd>
           <kbd>A</kbd>
           <kbd>S</kbd>
-          <kbd>D</kbd> drive · <kbd>Space</kbd> brake · <kbd>Shift</kbd> boost · <kbd>H</kbd> horn · drag to look around — roll onto the glowing pads
+          <kbd>D</kbd> drive · <kbd>Space</kbd> brake · <kbd>Shift</kbd> boost · <kbd>H</kbd> horn · <kbd>Tab</kbd> autopilot — roll onto the glowing pads
         </p>
       )}
     </div>
@@ -272,6 +276,8 @@ export function Hud({ data }: { data: WorldData | null }) {
       <Hint />
       <ZonePrompt />
       <Toast />
+      <PilotTrace />
+      <PilotBar data={data} />
       <LapTimer />
       <Trophies />
       {!quality.touch && <Minimap data={data} />}

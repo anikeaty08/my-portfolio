@@ -1,4 +1,4 @@
-import { useGLTF } from "@react-three/drei";
+import { Html, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, RigidBody, type RapierRigidBody } from "@react-three/rapier";
 import { useMemo, useRef } from "react";
@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { bakeRelativeTo } from "./bake";
 import { CarLights, takeLampMaterials } from "./CarLights";
 import { telemetry } from "./controls";
+import { npcs } from "./signals";
 import type { WorldData } from "./World";
 
 const COLORS = ["#3b82f6", "#10b981", "#e5e7eb"];
@@ -52,7 +53,7 @@ export function Traffic({ data }: { data: WorldData }) {
         group.add(w);
       }
       // Evenly spaced round the ring; angle decreases as they drive (clockwise from above).
-      return { group, lamps, angle: (i / COLORS.length) * Math.PI * 2, speed: CRUISE, braking: false };
+      return { group, lamps, angle: (i / COLORS.length) * Math.PI * 2, speed: CRUISE, braking: false, thought: "Cruising the ring" };
     });
   }, [scene]);
 
@@ -72,15 +73,33 @@ export function Traffic({ data }: { data: WorldData }) {
         return d * lane;
       };
       let gap = Infinity;
-      if (playerOnLane) gap = Math.min(gap, aheadGap(playerAngle));
+      let blocker = null as "you" | "car" | null; // assigned inside the forEach below
+      if (playerOnLane && aheadGap(playerAngle) < gap) {
+        gap = aheadGap(playerAngle);
+        blocker = "you";
+      }
       cars.forEach((other, j) => {
-        if (j !== i) gap = Math.min(gap, aheadGap(other.angle));
+        if (j !== i && aheadGap(other.angle) < gap) {
+          gap = aheadGap(other.angle);
+          blocker = "car";
+        }
       });
 
       const target = gap < STOP_GAP ? 0 : gap < SLOW_GAP ? (CRUISE * (gap - STOP_GAP)) / (SLOW_GAP - STOP_GAP) : CRUISE;
       car.braking = target < car.speed - 0.3;
       car.speed = car.braking ? Math.max(target, car.speed - BRAKE * dt) : Math.min(target, car.speed + ACCEL * dt);
       car.angle -= (car.speed / lane) * dt;
+
+      // What this agent is "thinking" — shown in its bubble and read by the autopilot.
+      car.thought =
+        gap < SLOW_GAP && blocker === "you"
+          ? car.speed < 0.3 ? "Waiting for you to move" : "Yielding to you"
+          : gap < SLOW_GAP && blocker === "car"
+            ? "Keeping distance from the car ahead"
+            : car.speed < CRUISE - 0.5
+              ? "Pulling away"
+              : "Cruising the ring";
+      npcs[i] = { x: Math.cos(car.angle) * lane, z: Math.sin(car.angle) * lane, thought: car.thought };
 
       const rb = bodies.current[i];
       if (!rb) return;
@@ -107,8 +126,30 @@ export function Traffic({ data }: { data: WorldData }) {
           <CuboidCollider args={[1.25, 0.45, 0.68]} position={[0, 0.2, 0]} />
           <primitive object={car.group} />
           <CarLights lamps={car.lamps} braking={() => car.braking || car.speed < 0.2} />
+          <Thought car={car} lane={lane} />
         </RigidBody>
       ))}
     </>
+  );
+}
+
+/** A little speech bubble over an NPC car, only when the player is close enough to read it. */
+function Thought({ car, lane }: { car: { thought: string; angle: number }; lane: number }) {
+  const el = useRef<HTMLDivElement>(null);
+  const last = useRef("");
+  useFrame(() => {
+    const node = el.current;
+    if (!node) return;
+    const d = Math.hypot(telemetry.x - Math.cos(car.angle) * lane, telemetry.z - Math.sin(car.angle) * lane);
+    node.style.opacity = d < 18 ? "1" : "0";
+    if (car.thought !== last.current) {
+      last.current = car.thought;
+      node.textContent = car.thought;
+    }
+  });
+  return (
+    <Html position={[0, 1.9, 0]} center distanceFactor={14} zIndexRange={[5, 0]} className="thought" style={{ pointerEvents: "none" }}>
+      <div ref={el} className="thought__bubble" />
+    </Html>
   );
 }

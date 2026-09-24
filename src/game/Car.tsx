@@ -8,6 +8,7 @@ import { getState, setState, useStore } from "../store";
 import { SKINS, unlock } from "./achievements";
 import { bakeRelativeTo } from "./bake";
 import { CarLights, takeLampMaterials } from "./CarLights";
+import { autopilot, stopAutopilot } from "./autopilot";
 import { input, pollGamepad, telemetry } from "./controls";
 import { effects } from "./Effects";
 import { teleportTarget } from "./Gameplay";
@@ -125,8 +126,11 @@ export function Car({ data }: { data: WorldData }) {
     const speed = v.currentVehicleSpeed();
     const s = getState();
     const locked = s.panel !== null || !s.started;
-    const throttle = locked ? 0 : input.throttle;
-    const steerInput = locked ? 0 : input.steer;
+    // Any driver input takes the wheel back from the autopilot.
+    if (autopilot.active && (input.throttle !== 0 || input.steer !== 0 || input.brake)) stopAutopilot("You took the wheel");
+    const cmd = autopilot.active ? autopilot.command : input;
+    const throttle = locked ? 0 : cmd.throttle;
+    const steerInput = locked ? 0 : cmd.steer;
 
     const t = Math.min(1, Math.abs(speed) / TUNE.maxSpeed);
     const maxSteer = THREE.MathUtils.lerp(TUNE.steerLow, TUNE.steerHigh, t);
@@ -135,7 +139,7 @@ export function Car({ data }: { data: WorldData }) {
     const limit = speed < 0 ? TUNE.maxReverse : TUNE.maxSpeed * (input.boost ? 1.4 : 1);
     const overLimit = Math.sign(throttle) === Math.sign(speed) && Math.abs(speed) > limit;
     const force = overLimit ? 0 : throttle * TUNE.engine * (input.boost ? TUNE.boost : 1);
-    const brake = input.brake ? TUNE.brake : throttle === 0 ? TUNE.roll : 0;
+    const brake = cmd.brake ? TUNE.brake : throttle === 0 ? TUNE.roll : 0;
 
     WHEELS.forEach((wh, i) => {
       v.setWheelEngineForce(i, force);
