@@ -28,7 +28,8 @@ FONT = Path("C:/Windows/Fonts/ariblk.ttf")
 
 GROUND = 0.5  # top of the grass
 ISLAND_R = 72.0  # big island: room for the city district, ramps and traffic
-ROAD_IN, ROAD_OUT = 17.0, 20.4
+# A generous two-lane ring: wide enough for the player, NPCs and a clear shoulder.
+ROAD_IN, ROAD_OUT = 16.2, 21.0
 ROAD_MID = (ROAD_IN + ROAD_OUT) / 2
 VIEW = Vector((0.7071, -0.7071, 0))  # direction toward the game camera (three: +x, +z)
 
@@ -40,6 +41,7 @@ colliders = []  # static
 dynamic = []  # props with rigid bodies
 zones = []
 animated = []  # names of nodes three.js animates
+pedestrians = []  # crossing people; three.js moves these and the autopilot yields to them
 clearings = []  # (blender x, y, radius): no trees, no grass
 
 
@@ -71,12 +73,13 @@ _mats = {}
 def mat(name, hexcol, rough=0.8, metal=0.0, emit=0.0):
     if name in _mats:
         return _mats[name]
-    m = bpy.data.materials.new(name)
+    # Reuse the semantic name across repeated live-Blender builds (no orange.001 drift).
+    m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
     try:
         m.use_nodes = True
     except AttributeError:
         pass
-    b = m.node_tree.nodes.get("Principled BSDF")
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
     b.inputs["Base Color"].default_value = (*srgb(hexcol), 1)
     b.inputs["Roughness"].default_value = rough
     b.inputs["Metallic"].default_value = metal
@@ -87,9 +90,9 @@ def mat(name, hexcol, rough=0.8, metal=0.0, emit=0.0):
     return m
 
 
-GRASS = mat("grass", "#8ccb5e", 0.95)
-SAND = mat("sand", "#f1d7a1", 0.95)
-ROAD = mat("road", "#3b3f4b", 0.9)
+GRASS = mat("grass", "#829b69", 0.95)
+SAND = mat("sand", "#ddcfad", 0.95)
+ROAD = mat("road", "#363e43", 0.9)
 PAINT = mat("paint", "#f6f2ea", 0.7)
 STONE = mat("stone", "#ddd6c8", 0.9)
 CURB = mat("curb", "#b9b2a6", 0.9)
@@ -98,9 +101,9 @@ ORANGE_GLOW = mat("orange_glow", "#ff7a3d", 0.4, emit=4)
 DARK = mat("dark", "#22242c", 0.5)
 SCREEN = mat("screen", "#10131a", 0.3)
 TRUNK = mat("trunk", "#7a4b2a", 0.9)
-LEAF_A = mat("leaf_a", "#5e9c3f", 0.95)
-LEAF_B = mat("leaf_b", "#71b34b", 0.95)
-LEAF_C = mat("leaf_c", "#4c8a36", 0.95)
+LEAF_A = mat("leaf_a", "#476b4a", 0.95)
+LEAF_B = mat("leaf_b", "#688452", 0.95)
+LEAF_C = mat("leaf_c", "#365b48", 0.95)
 ROCK = mat("rock", "#9a9ba0", 0.95)
 WOOD = mat("wood", "#b27a45", 0.85)
 WALL = mat("wall", "#e9e4da", 0.6)
@@ -230,16 +233,19 @@ def annulus(name, r0, r1, z, m, seg=160):
 
 
 annulus("road_ring", ROAD_IN, ROAD_OUT, GROUND + 0.015, ROAD)
-annulus("curb_in", ROAD_IN - 0.35, ROAD_IN, GROUND + 0.03, CURB)
-annulus("curb_out", ROAD_OUT, ROAD_OUT + 0.35, GROUND + 0.03, CURB)
+annulus("curb_in", ROAD_IN - 0.42, ROAD_IN, GROUND + 0.03, CURB)
+annulus("curb_out", ROAD_OUT, ROAD_OUT + 0.42, GROUND + 0.03, CURB)
+# Solid shoulder lines make the wider road read as a real driving surface at a glance.
+annulus("road_edge_in", ROAD_IN + 0.32, ROAD_IN + 0.44, GROUND + 0.035, PAINT)
+annulus("road_edge_out", ROAD_OUT - 0.44, ROAD_OUT - 0.32, GROUND + 0.035, PAINT)
 for i in range(48):
-    box((1.0, 0.16, 0.02), polar(ROAD_MID, i * 7.5, GROUND + 0.03), PAINT, rot_z=math.radians(i * 7.5 + 90))
+    box((1.15, 0.18, 0.02), polar(ROAD_MID, i * 7.5, GROUND + 0.03), PAINT, rot_z=math.radians(i * 7.5 + 90))
 
 ZONE_R = 33.5
 spoke_len = ZONE_R - 5 - ROAD_OUT
 for deg in (0, 90, 180, 270):
-    box((ROAD_IN - 6.4, 3.4, 0.03), polar((ROAD_IN + 6.2) / 2, deg, GROUND + 0.012), ROAD, rot_z=math.radians(deg))
-    box((spoke_len + 0.4, 3.4, 0.03), polar(ROAD_OUT + spoke_len / 2, deg, GROUND + 0.012), ROAD,
+    box((ROAD_IN - 6.4, ROAD_OUT - ROAD_IN, 0.03), polar((ROAD_IN + 6.2) / 2, deg, GROUND + 0.012), ROAD, rot_z=math.radians(deg))
+    box((spoke_len + 0.4, ROAD_OUT - ROAD_IN, 0.03), polar(ROAD_OUT + spoke_len / 2, deg, GROUND + 0.012), ROAD,
         rot_z=math.radians(deg))
 
 cyl(6.2, 0.08, (0, 0, GROUND + 0.02), STONE, verts=64)
@@ -274,7 +280,7 @@ def letters(word, center, size, facing, prefix, m):
 
 
 letters("ANIKEAT", Vector((0, 0.6, 0)), 2.4, VIEW, "dyn_letter_", ORANGE)
-floor_text("YADAV  ·  STUDENT DEVELOPER", Vector((1.4, -1.4, 0)), WHITE, 0.5)
+floor_text("YADAV  ·  AI AGENTS  ·  MCP  ·  FULL-STACK", Vector((1.4, -1.4, 0)), WHITE, 0.38)
 
 # traffic cones around the plaza, also knockable
 for i in range(10):
@@ -343,7 +349,7 @@ for i, p in enumerate(PROJECTS):
 sign_at = Vector((PX, PY, 0)) - VIEW * 1.6
 text_mesh("PROJECTS", (sign_at.x, sign_at.y, GROUND + 4.6), ORANGE_GLOW, size=1.2, extrude=0.16,
           rot=(math.radians(90), 0, FACE_VIEW))
-floor_text("PROJECTS", Vector((ZONE_R - 9.5, -3.0, 0)), WHITE, 1.4)
+floor_text("PROJECTS", Vector((ZONE_R - 9.5, -3.0, 0)), ORANGE_GLOW, 1.65)
 PX_BEHIND = Vector((PX, PY, 0)) - VIEW * 3.5  # a golden egg hides here
 
 # ---------------------------------------------------------------- WEST: skills scoreboard + blocks
@@ -367,7 +373,7 @@ for i, (title, color, items) in enumerate(SKILL_GROUPS):
     box((0.05, col_w - 0.6, 0.06), (BX + 0.29, cy, BOARD_Z + 1.12), accent)
     for n, item in enumerate(items):
         text_mesh(item, (BX + 0.3, cy, BOARD_Z + 0.55 - n * 0.52), SCREEN_TEXT, size=0.27, extrude=0.02, rot=FACE_X)
-floor_text("SKILLS", Vector((-(ZONE_R - 6.5), 2.5, 0)), WHITE, 1.4)
+floor_text("SKILLS", Vector((-(ZONE_R - 6.5), 2.5, 0)), CYAN_GLOW, 1.65)
 zones.append({"id": "skills", "kind": "skills", "pos": t3((BX + 4.5, 0, GROUND)), "radius": 2.6})
 pad = cyl(2.2, 0.03, (BX + 4.5, 0, GROUND + 0.075), PAD, verts=48)
 pad.name = "pad_skills"
@@ -408,7 +414,9 @@ zones.append({"id": "contact", "kind": "contact", "pos": t3((2.4, CY + 3.2, GROU
 pad = cyl(1.9, 0.03, (2.4, CY + 3.2, GROUND + 0.075), PAD, verts=48)
 pad.name = "pad_contact"
 animated.append(pad.name)
-floor_text("CONTACT", Vector((-3.2, CY + 6.5, 0)), WHITE, 1.4)
+floor_text("CONTACT", Vector((-3.2, CY + 6.5, 0)), RED_GLOW, 1.65)
+text_mesh("CONTACT", (-2.7, CY + 0.25, GROUND + 3.25), RED_GLOW, size=0.68, extrude=0.08,
+          rot=(math.radians(90), 0, FACE_VIEW))
 
 tx, ty = -4.0, CY - 2.5
 for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
@@ -437,7 +445,9 @@ for dx in (-1.9, 1.9):
     box((1.0, 0.12, 0.9), (AX + dx, AY - 2.32, GROUND + 1.9), WARM_GLOW)
 box((0.8, 0.8, 1.6), (AX + 1.8, AY + 1.2, GROUND + 5.2), BRICK)
 static_box(Vector((AX, AY, GROUND + 1.6)), (6.2, 4.8, 3.2))
-floor_text("ABOUT ME", Vector((-3.0, AY - 6.8, 0)), WHITE, 1.4)
+floor_text("ABOUT ME", Vector((-3.0, AY - 6.8, 0)), WARM_GLOW, 1.6)
+text_mesh("ABOUT", (AX, AY - 2.43, GROUND + 3.55), WARM_GLOW, size=0.68, extrude=0.07,
+          rot=(math.radians(90), 0, FACE_VIEW))
 zones.append({"id": "about", "kind": "about", "pos": t3((AX, AY - 4.6, GROUND)), "radius": 2.2})
 pad = cyl(1.9, 0.03, (AX, AY - 4.6, GROUND + 0.075), PAD, verts=48)
 pad.name = "pad_about"
@@ -525,6 +535,71 @@ def apply_all_modifiers(o):
         bpy.ops.object.modifier_apply(modifier=m.name)
 
 
+# ---------------------------------------------------------------- people
+
+HUMAN_PANTS = mat("human_pants", "#26354d", 0.72)
+HUMAN_HAIR = mat("human_hair", "#33261d", 0.82)
+SKIN_TONES = ["#f2c5a5", "#c98762", "#8a573b"]
+
+
+def make_human(name, at, shirt_hex, yaw=0.0, scale=1.0, skin_index=0):
+    """A low-poly person exported as a real limb hierarchy for runtime walk animation."""
+    shirt = mat(f"{name}_shirt", shirt_hex, 0.65)
+    skin = mat(f"{name}_skin", SKIN_TONES[skin_index % len(SKIN_TONES)], 0.65)
+    side = Vector((-math.sin(yaw), math.cos(yaw), 0))
+    s = scale
+    root = bpy.data.objects.new(name, None)
+    root.location = (at.x, at.y, GROUND)
+    bpy.context.collection.objects.link(root)
+    bpy.context.view_layer.update()
+    parts = {
+        "torso": cyl(0.23 * s, 0.66 * s, (at.x, at.y, GROUND + 0.98 * s), shirt, verts=8, r2=0.19 * s),
+        "head": ico(0.23 * s, (at.x, at.y, GROUND + 1.56 * s), skin, sub=1),
+        "hair": ico(0.24 * s, (at.x, at.y, GROUND + 1.70 * s), HUMAN_HAIR, sub=1, scale=(1, 1, 0.42)),
+    }
+    for sign in (-1, 1):
+        leg = at + side * (sign * 0.11 * s)
+        arm = at + side * (sign * 0.31 * s)
+        side_name = "l" if sign < 0 else "r"
+        leg_part = cyl(0.075 * s, 0.56 * s, (leg.x, leg.y, GROUND + 0.31 * s), HUMAN_PANTS, verts=7)
+        arm_part = cyl(0.062 * s, 0.52 * s, (arm.x, arm.y, GROUND + 1.05 * s), skin, verts=7)
+        # Put each limb origin at its joint so the runtime gait swings from hips/shoulders.
+        for vertex in leg_part.data.vertices:
+            vertex.co.z -= 0.28 * s
+        leg_part.location.z += 0.28 * s
+        for vertex in arm_part.data.vertices:
+            vertex.co.z -= 0.26 * s
+        arm_part.location.z += 0.26 * s
+        parts[f"leg_{side_name}"] = leg_part
+        parts[f"arm_{side_name}"] = arm_part
+    for limb, part in parts.items():
+        part.name = f"{name}_{limb}"
+        part.parent = root
+        part.matrix_parent_inverse = root.matrix_world.inverted()
+    animated.append(name)
+    return root
+
+
+def make_walker(name, center, axis, span, shirt_hex, phase, skin_index=0):
+    """Create a person whose crossing path is exported for the runtime traffic system."""
+    start = center - axis * (span / 2)
+    make_human(name, start, shirt_hex, yaw=math.atan2(axis.y, axis.x), scale=1.1, skin_index=skin_index)
+    pedestrians.append({
+        "node": name,
+        "center": [round(center.x, 3), round(-center.y, 3)],
+        "axis": [round(axis.x, 4), round(-axis.y, 4)],
+        "span": span,
+        "phase": phase,
+    })
+
+
+# Visitors give the otherwise toy-like island a sense of scale and life.
+make_human("human_projects_0", Vector((PX - 4.8, -4.0, 0)), "#3b82f6", yaw=0.3, scale=1.18)
+make_human("human_skills_0", Vector((BX + 4.5, -5.3, 0)), "#8b5cf6", yaw=-0.2, scale=1.12, skin_index=1)
+make_human("human_contact_0", Vector((5.0, CY + 0.6, 0)), "#ef4444", yaw=0.6, scale=1.12, skin_index=2)
+make_human("human_campfire_0", Vector((fx + 2.0, fy + 1.6, 0)), "#f59e0b", yaw=-0.7, scale=1.08)
+
+
 # ---------------------------------------------------------------- bowling alley (north-east)
 
 PIN_WHITE = mat("pin_white", "#fbfaf6", 0.35)
@@ -532,6 +607,10 @@ PIN_RED = mat("pin_red", "#d9362b", 0.4)
 LANE = mat("lane", "#d9a86a", 0.45)
 GUTTER = mat("gutter", "#2c2f38", 0.5)
 BALL = mat("ball", "#2446a8", 0.12, 0.2)
+BOWL_TEAL = mat("bowl_teal", "#27646b", 0.32, 0.18)
+BOWL_TRIM = mat("bowl_trim", "#151c24", 0.24, 0.35)
+BOWL_SCREEN = mat("bowl_screen", "#102129", 0.18, 0.25, emit=0.22)
+BOWL_GLOW = mat("bowl_glow", "#ffd36b", 0.22, emit=4.0)
 
 BOWL_DEG = 45
 bowl_dir = Vector((math.cos(math.radians(BOWL_DEG)), math.sin(math.radians(BOWL_DEG)), 0))
@@ -551,6 +630,46 @@ for s in (-1, 1):
     rail = lane_mid + bowl_side * s * 2.55
     box((lane_len, 0.25, 0.35), (rail.x, rail.y, GROUND + 0.17), WOOD, rot_z=rot, bevel=0.04)
     static_box(Vector((rail.x, rail.y, GROUND + 0.17)), (lane_len, 0.25, 0.35), rot)
+
+# A small architectural pavilion makes the lane read as a destination, day or night.
+for distance in (lane_start + 1.1, lane_start + 6.5, lane_end - 1.0):
+    arch = bowl_dir * distance
+    for side_sign in (-1, 1):
+        post = arch + bowl_side * side_sign * 2.72
+        box((0.24, 0.24, 4.1), (post.x, post.y, GROUND + 2.05), BOWL_TRIM, rot_z=rot, bevel=0.05)
+    box((0.26, 5.7, 0.24), (arch.x, arch.y, GROUND + 4.0), BOWL_TRIM, rot_z=rot, bevel=0.05)
+    for light_offset in (-1.55, 0, 1.55):
+        light = arch + bowl_side * light_offset
+        box((0.72, 0.12, 0.07), (light.x, light.y, GROUND + 3.84), BOWL_GLOW, rot_z=rot, bevel=0.03)
+
+# Foul line, illuminated lane edges, and a raised pin deck add proper bowling cues.
+foul = bowl_dir * (lane_start + 2.35)
+box((0.13, 3.45, 0.025), (foul.x, foul.y, GROUND + 0.075), BOWL_TRIM, rot_z=rot)
+deck = bowl_dir * (lane_end - 2.2)
+box((4.4, 3.4, 0.08), (deck.x, deck.y, GROUND + 0.04), PIN_WHITE, rot_z=rot, bevel=0.03)
+for side_sign in (-1, 1):
+    edge = lane_mid + bowl_side * side_sign * 1.76
+    box((lane_len, 0.055, 0.055), (edge.x, edge.y, GROUND + 0.11), BOWL_GLOW, rot_z=rot)
+
+# Side-mounted ball return, lounge bench, and scoring display stay clear of the roll path.
+return_mid = bowl_dir * (lane_start + 3.0) + bowl_side * 3.35
+box((3.3, 0.72, 0.42), (return_mid.x, return_mid.y, GROUND + 0.46), BOWL_TEAL, rot_z=rot, bevel=0.16)
+return_head = return_mid + bowl_dir * 1.42
+box((0.62, 0.9, 0.95), (return_head.x, return_head.y, GROUND + 0.55), BOWL_TRIM, rot_z=rot, bevel=0.15)
+for offset, colour in ((-0.8, "#8b5cf6"), (0.1, "#e84d4f"), (0.95, "#f2a93b")):
+    returned = return_mid + bowl_dir * offset
+    ico(0.34, (returned.x, returned.y, GROUND + 0.78), mat(f"return_ball_{offset}", colour, 0.16, 0.22), sub=2)
+lounge = bowl_dir * (lane_start + 0.1) - bowl_side * 3.55
+box((2.7, 0.72, 0.26), (lounge.x, lounge.y, GROUND + 0.64), WOOD, rot_z=rot, bevel=0.1)
+for long_offset in (-0.95, 0.95):
+    foot = lounge + bowl_dir * long_offset
+    box((0.16, 0.65, 0.62), (foot.x, foot.y, GROUND + 0.31), BOWL_TRIM, rot_z=rot)
+screen_at = bowl_dir * (lane_start + 7.0) - bowl_side * 3.0
+box((0.24, 3.2, 2.0), (screen_at.x, screen_at.y, GROUND + 2.25), BOWL_TRIM, rot_z=rot, bevel=0.1)
+screen_face = screen_at + bowl_side * 0.13
+box((0.28, 2.72, 1.55), (screen_face.x, screen_face.y, GROUND + 2.28), BOWL_SCREEN, rot_z=rot, bevel=0.06)
+text_mesh("10  FRAME", (screen_face.x, screen_face.y, GROUND + 2.4), BOWL_GLOW, size=0.32, extrude=0.025,
+          rot=(math.radians(90), 0, rot))
 back = bowl_dir * (lane_end + 0.6)
 box((0.5, 6.0, 2.2), (back.x, back.y, GROUND + 1.1), GUTTER, rot_z=rot, bevel=0.05)
 static_box(Vector((back.x, back.y, GROUND + 1.1)), (0.5, 6.0, 2.2), rot)
@@ -605,6 +724,8 @@ holes = [cyl(0.07, 0.1, (ball_at.x + dx, ball_at.y - 0.5, GROUND + 0.56 + dz), D
 ball = join_as([ball] + holes, "dyn_ball")
 dynamic.append({"node": "dyn_ball", "shape": "ball", "group": "ball", "mass": 3.0, "radius": 0.55})
 zones.append({"id": "bowling", "kind": "bowling", "pos": t3(bowl_dir * (lane_start - 2.2)), "radius": 2.2})  # behind the ball
+make_human("human_bowling_0", bowl_dir * (lane_start - 1.8) + bowl_side * 3.25, "#10b981", yaw=rot, scale=1.14, skin_index=1)
+make_human("human_bowling_1", bowl_dir * (lane_end - 4.6) - bowl_side * 3.1, "#ec4899", yaw=rot + math.pi, scale=1.05, skin_index=2)
 
 # ---------------------------------------------------------------- crate stack (south-east, visible from spawn)
 
@@ -705,9 +826,15 @@ T_ROT = math.radians(TOWN_DEG)
 BLOCK, STREET = 8.0, 5.0
 N_BLOCKS = 2
 SPAN = N_BLOCKS * BLOCK + (N_BLOCKS + 1) * STREET  # 31 m square
-SIDEWALK = mat("sidewalk", "#c9c4ba", 0.9)
-WINDOWS = mat("windows", "#ffe9a8", 0.3, emit=0.35)  # three.js turns these up at night
-FACADES = ["#e8dccb", "#c9d6e3", "#f1c9b5", "#d7e6c8", "#e6d3ef", "#f4e3b1", "#b9c7cf"]
+SIDEWALK = mat("sidewalk", "#d9d3c5", 0.85)
+WINDOWS = mat("windows", "#49616a", 0.18, 0.3, emit=0.08)
+FACADES = ["#eee4d4", "#bc7055", "#94a491", "#dbcaad"]
+FRAME = mat("architectural_frame", "#263b39", 0.38, 0.35)
+TRIM = mat("limestone_trim", "#f1e9db", 0.7)
+CEDAR = mat("cedar", "#986746", 0.65)
+BRASS = mat("brass", "#b39358", 0.35, 0.6)
+WATER = mat("courtyard_water", "#508b89", 0.15, 0.35)
+SIGN = mat("district_sign", "#f4e7cd", 0.5, emit=0.35)
 
 
 def town(u, v, z=GROUND):
@@ -735,42 +862,129 @@ for L in lines:
         d = town(k * 2.3, L, GROUND + 0.031)
         box((1.1, 0.12, 0.01), d, PAINT, rot_z=T_ROT)
 
+def town_box(size, u, v, height, material, bevel=0.025):
+    return box(size, town(u, v, GROUND + height), material, rot_z=T_ROT, bevel=bevel)
+
+
+def planter(u, v, size=0.65, tree=False):
+    p = town(u, v)
+    town_box((size, size, 0.38), u, v, 0.36, TRIM, 0.07)
+    town_box((size * 0.85, size * 0.85, 0.045), u, v, 0.565, DARK)
+    if tree:
+        cyl(0.09, 1.9, (p.x, p.y, GROUND + 1.5), TRUNK, verts=9)
+        for dx, dy, z, r in ((0, 0, 2.85, 0.78), (0.35, 0.2, 2.5, 0.58), (-0.3, -0.15, 2.55, 0.62)):
+            ico(r, (p.x + dx, p.y + dy, GROUND + z), LEAF_A if dx <= 0 else LEAF_B, sub=2)
+    else:
+        ico(size * 0.55, (p.x, p.y, GROUND + 0.72), LEAF_B, sub=2, scale=(1, 1, 0.65))
+    static_box(town(u, v, GROUND + 0.35), (size, size, 0.7), T_ROT)
+
+
+def bench(u, v):
+    for s in (-0.55, 0.55):
+        town_box((0.12, 0.55, 0.45), u + s, v, 0.43, FRAME)
+    for k in range(4):
+        town_box((1.6, 0.105, 0.08), u, v - 0.18 + k * 0.12, 0.69, CEDAR)
+        town_box((1.6, 0.075, 0.1), u, v + 0.28, 0.89 + k * 0.12, CEDAR)
+    static_box(town(u, v, GROUND + 0.6), (1.65, 0.65, 1.2), T_ROT)
+
+
+def residence(index, u, v, height, label):
+    """Stepped apartment with real window reveals, balcony rails, roof garden and a shopfront."""
+    w, d, base = 2.65, 5.65, 0.18
+    facade = mat(f"facade_{index % 4}", FACADES[index % 4], 0.72)
+    parts = []
+    def detail(size, du, dv, h, material, bevel=0.025):
+        o = town_box(size, u + du, v + dv, base + h, material, bevel)
+        parts.append(o)
+        return o
+    detail((w, d, height), 0, 0, height / 2, facade, 0.09)
+    detail((w + 0.12, d + 0.12, 0.2), 0, 0, 0.1, FRAME)
+    detail((w + 0.25, d + 0.25, 0.18), 0, 0, height, TRIM)
+    # Street-facing doors and an attached shop sign, supported by the facade.
+    detail((1.55, 0.1, 1.45), 0, -d / 2 - 0.02, 0.95, FRAME)
+    detail((1.32, 0.11, 1.21), 0, -d / 2 - 0.07, 0.96, WINDOWS)
+    detail((0.055, 0.14, 1.3), 0, -d / 2 - 0.13, 0.96, BRASS)
+    detail((w + 0.16, 0.72, 0.12), 0, -d / 2 - 0.19, 1.88, FRAME)
+    detail((w, 0.12, 0.43), 0, -d / 2 - 0.02, 2.22, FRAME)
+    text_at = town(u, v - d / 2 - 0.105, GROUND + base + 2.08)
+    parts.append(text_mesh(label, text_at, SIGN, size=0.23, extrude=0.006, rot=(math.pi / 2, 0, T_ROT)))
+    floors = max(1, int((height - 2.5) / 1.45))
+    for f in range(floors):
+        z = 3.05 + f * 1.45
+        for side in (-1, 1):
+            for dv in (-1.55, 0, 1.55):
+                detail((0.09, 1.0, 0.98), side * (w / 2 + 0.015), dv, z, FRAME)
+                detail((0.11, 0.85, 0.8), side * (w / 2 + 0.045), dv, z, WINDOWS)
+                detail((0.13, 0.055, 0.83), side * (w / 2 + 0.09), dv, z, TRIM)
+            detail((1.8, 0.1, 1.0), 0, side * (d / 2 + 0.03), z, FRAME)
+            detail((1.62, 0.12, 0.83), 0, side * (d / 2 + 0.075), z, WINDOWS)
+            detail((2.18, 0.55, 0.13), 0, side * (d / 2 + 0.20), z - 0.57, TRIM)
+            detail((2.08, 0.065, 0.07), 0, side * (d / 2 + 0.45), z + 0.02, FRAME)
+            for k in range(7):
+                detail((0.035, 0.04, 0.6), -0.96 + k * 0.32, side * (d / 2 + 0.45), z - 0.24, FRAME)
+        detail((w + 0.08, d + 0.08, 0.09), 0, 0, z + 0.6, TRIM)
+    # Recessed rooftop pavilion and planted terrace.
+    detail((w - 0.48, 2.4, 0.85), 0, 0.65, height + 0.46, FRAME, 0.06)
+    detail((w - 0.36, 2.58, 0.1), 0, 0.65, height + 0.93, CEDAR)
+    for dv in (-2.25, 2.25):
+        detail((w - 0.2, 0.35, 0.34), 0, dv, height + 0.28, TRIM)
+        detail((w - 0.35, 0.32, 0.3), 0, dv, height + 0.55, LEAF_A, 0.1)
+    building = join_as(parts, f"bldg_{index}")
+    animated.append(building.name)
+    static_box(town(u, v, GROUND + base + height / 2), (w, d, height), T_ROT)
+
+
 random.seed(17)
-b_index = 0
 lamp_spots = []
 for bi in range(N_BLOCKS):
     for bj in range(N_BLOCKS):
-        bu = -SPAN / 2 + STREET + BLOCK / 2 + bi * (BLOCK + STREET)
-        bv = -SPAN / 2 + STREET + BLOCK / 2 + bj * (BLOCK + STREET)
-        box((BLOCK, BLOCK, 0.18), town(bu, bv, GROUND + 0.09), SIDEWALK, rot_z=T_ROT, bevel=0.04)
-        lamp_spots += [(bu - BLOCK / 2 + 0.4, bv - BLOCK / 2 + 0.4), (bu + BLOCK / 2 - 0.4, bv + BLOCK / 2 - 0.4)]
-        for qi in (-1, 1):
-            for qj in (-1, 1):
-                w, d = random.uniform(2.6, 3.3), random.uniform(2.6, 3.3)
-                h = random.choice([3.2, 4.5, 6.0, 7.5, 9.5])
-                cu, cv = bu + qi * 1.85, bv + qj * 1.85
-                base = town(cu, cv, GROUND + 0.18)
-                facade = mat(f"facade_{b_index % len(FACADES)}", FACADES[b_index % len(FACADES)], 0.8)
-                parts = [box((w, d, h), (base.x, base.y, base.z + h / 2), facade, rot_z=T_ROT, bevel=0.05)]
-                floors = max(1, int((h - 0.8) / 1.5))
-                for f in range(floors):  # window bands on all four sides
-                    z = base.z + 1.1 + f * 1.5
-                    parts.append(box((w + 0.04, d * 0.8, 0.45), (base.x, base.y, z), WINDOWS, rot_z=T_ROT))
-                    parts.append(box((w * 0.8, d + 0.04, 0.45), (base.x, base.y, z), WINDOWS, rot_z=T_ROT))
-                roof_c = town(cu + random.uniform(-0.5, 0.5), cv + random.uniform(-0.5, 0.5), base.z + h)
-                parts.append(box((1.0, 0.8, 0.5), (roof_c.x, roof_c.y, roof_c.z + 0.25), METAL, rot_z=T_ROT))
-                bld = join_as(parts, f"bldg_{b_index}")
-                animated.append(bld.name)
-                static_box(Vector((base.x, base.y, base.z + h / 2)), (w, d, h), T_ROT)
-                b_index += 1
-        static_box(town(bu, bv, GROUND + 0.09), (BLOCK, BLOCK, 0.18), T_ROT)  # curb you can bump
+        bu, bv = -6.5 + bi * 13, -6.5 + bj * 13
+        town_box((BLOCK, BLOCK, 0.18), bu, bv, 0.09, SIDEWALK, 0.055)
+        static_box(town(bu, bv, GROUND + 0.09), (BLOCK, BLOCK, 0.18), T_ROT)
+        for k in range(9):
+            town_box((0.018, BLOCK, 0.012), bu - 4 + k, bv, 0.187, CURB, 0)
+            town_box((BLOCK, 0.018, 0.012), bu, bv - 4 + k, 0.188, CURB, 0)
+        lamp_spots += [(bu - 3.65, bv - 3.65), (bu + 3.65, bv + 3.65)]
+        if bi == 0 and bj == 0:
+            # Courtyard keeps sightlines open at the entrance to the society.
+            center = town(bu, bv)
+            cyl(1.65, 0.36, (center.x, center.y, GROUND + 0.38), TRIM, verts=48)
+            cyl(1.40, 0.05, (center.x, center.y, GROUND + 0.59), WATER, verts=48, smooth=True)
+            cyl(0.20, 0.74, (center.x, center.y, GROUND + 0.91), BRASS, verts=16)
+            ico(0.37, (center.x, center.y, GROUND + 1.44), BRASS, sub=2)
+            static_cyl(Vector((center.x, center.y, GROUND + 0.5)), 1.65, 1)
+            for du, dv in ((-2.7, -2.7), (2.7, 2.7), (-2.7, 2.7), (2.7, -2.7)):
+                planter(bu + du, bv + dv, 0.85, tree=True)
+            bench(bu, bv - 2.75)
+            bench(bu, bv + 2.65)
+        else:
+            index = (bi * 2 + bj - 1) * 2
+            labels = ["THE STUDIO", "CORNER CAFE", "GARDEN HOUSE", "ATELIER", "RESIDENCE 05", "THE LIBRARY"]
+            for k in range(2):
+                residence(index + k, bu - 1.62 + k * 3.24, bv, [6.4, 4.9, 7.85, 6.4, 4.9, 6.4][index + k], labels[index + k])
+            for du in (-3.55, 3.55):
+                planter(bu + du, bv, 0.52, tree=True)
 
-LAMP_HEAD = mat("lamp_head", "#fff2c4", 0.3, emit=2.0)
+LAMP_HEAD = mat("lamp_head", "#ffe3af", 0.3, emit=2.0)
 for u, v in lamp_spots:
-    p = town(u, v, GROUND)
-    cyl(0.06, 3.4, (p.x, p.y, GROUND + 1.9), DARK, verts=8)
-    ico(0.18, (p.x, p.y, GROUND + 3.65), LAMP_HEAD, sub=2)
-    static_cyl(Vector((p.x, p.y, GROUND + 1)), 0.12, 2)
+    p = town(u, v)
+    cyl(0.15, 0.2, (p.x, p.y, GROUND + 0.28), FRAME, verts=12)
+    cyl(0.055, 3.0, (p.x, p.y, GROUND + 1.78), FRAME, verts=10)
+    town_box((0.65, 0.24, 0.10), u + 0.25, v, 3.29, FRAME)
+    town_box((0.42, 0.17, 0.035), u + 0.30, v, 3.22, LAMP_HEAD)
+    static_cyl(Vector((p.x, p.y, GROUND + 1)), 0.14, 2)
+
+# A grounded entrance monument and planted promenade instead of floating lettering.
+town_box((0.48, 4.8, 1.4), -18.4, -4.8, 0.7, FRAME, 0.09)
+town_box((0.51, 4.9, 0.08), -18.4, -4.8, 1.43, BRASS)
+entry = town(-18.67, -4.8, GROUND + 0.81)
+text_mesh("THE COMMONS", entry, SIGN, size=0.4, extrude=0.009, rot=(math.pi / 2, 0, T_ROT - math.pi / 2))
+static_box(town(-18.4, -4.8, GROUND + 0.7), (0.48, 4.8, 1.4), T_ROT)
+for u in (-20, -24):
+    for v in (-3.4, 3.4):
+        planter(u, v, 0.8, tree=True)
+make_walker("human_garden_0", town(-9.6, -6.5), T_SIDE, 3.0, "#a16650", phase=0.5, skin_index=1)
+make_walker("human_garden_1", town(-3.4, -6.5), T_SIDE, 3.0, "#496a75", phase=2.1, skin_index=2)
 
 # a traffic light at the central intersection (lamps animated in three.js)
 tl = town(lines[1] + STREET / 2 + 0.4, lines[1] + STREET / 2 + 0.4)
@@ -781,6 +995,15 @@ for k, (name, col) in enumerate((("tl_red", "#ff3b30"), ("tl_amber", "#ffb020"),
     lamp.name = name
     animated.append(name)
 static_cyl(Vector((tl.x, tl.y, GROUND + 1)), 0.15, 2)
+
+# Zebra crossings and two walkers make the main intersection legible and give the driver a real
+# right-of-way decision.  Their paths are read by World.tsx and shared with the autopilot.
+cross = town(lines[1], lines[1], GROUND)
+for k in range(-4, 5):
+    box((0.34, 1.05, 0.018), town(lines[1] + k * 0.48, lines[1] + 2.85, GROUND + 0.035), PAINT, rot_z=T_ROT)
+    box((1.05, 0.34, 0.018), town(lines[1] - 2.85, lines[1] + k * 0.48, GROUND + 0.035), PAINT, rot_z=T_ROT)
+make_walker("human_crossing_0", cross + T_SIDE * 2.85, T_FWD, 5.4, "#2563eb", phase=0.2, skin_index=1)
+make_walker("human_crossing_1", cross - T_FWD * 2.85, T_SIDE, 5.4, "#f97316", phase=math.pi, skin_index=2)
 
 # parked cars along the streets — dynamic, so they can be shunted
 CAR_COLS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#e5e7eb", "#6366f1"]
@@ -799,7 +1022,7 @@ for k in range(6):
     car_obj = join_as(parts, f"dyn_parked_{k}")
     dynamic.append({"node": car_obj.name, "shape": "box", "group": "parked", "mass": 3.0, "half": [1.1, 0.63, 0.56]})
 
-floor_text("DOWNTOWN", town(-SPAN / 2 - 3.2, 0), WHITE, 1.3)
+floor_text("DOWNTOWN", town(-SPAN / 2 - 3.2, 0), CYAN_GLOW, 1.5)
 clear(TOWN_C.x, TOWN_C.y, SPAN * 0.75)
 clear(mid.x, mid.y, (far - near) / 2 + 1)
 
@@ -1051,10 +1274,11 @@ meta = {
     "dynamic": dynamic,
     "zones": zones,
     "animated": animated,
-    "roads": {"ringIn": ROAD_IN, "ringOut": ROAD_OUT, "plaza": 6.5, "spokeHalf": 1.7, "spokes": [0, 90, 180, 270, TOWN_DEG]},
+    "roads": {"ringIn": ROAD_IN, "ringOut": ROAD_OUT, "plaza": 6.5, "spokeHalf": (ROAD_OUT - ROAD_IN) / 2, "spokes": [0, 90, 180, 270, TOWN_DEG]},
     "town": {"center": t3(TOWN_C), "span": SPAN, "rotY": round(T_ROT, 4)},
     "clearings": [[round(x, 3), round(-y, 3), r] for x, y, r in clearings],
     "shore": shore_radii(),
+    "pedestrians": pedestrians,
     "roadGraph": road_graph(),
     "liveBoard": LIVE_BOARD,
 }
@@ -1118,7 +1342,7 @@ for y in (-0.45, 0.45):  # round headlights in chrome rings
     body_parts.append(cyl(0.095, 0.06, (1.26, y, 0.19), WARM_GLOW, rot=(0, math.radians(90), 0), verts=18, smooth=True))
 for x in (-0.8, 0.8):  # fender flares over each wheel
     for y in (-0.66, 0.66):
-        body_parts.append(box((0.86, 0.14, 0.08), (x, y * 1.05, 0.16), DARK, bevel=0.035))
+        body_parts.append(box((0.98, 0.16, 0.12), (x, y * 1.22, 0.17), DARK, bevel=0.04))
 bpy.ops.object.select_all(action="DESELECT")
 for o in body_parts:
     apply_all_modifiers(o)
@@ -1134,30 +1358,30 @@ RIM = mat("rim", "#d9dde3", 0.25, 1.0)
 RIM_DARK = mat("rim_dark", "#7d838e", 0.35, 1.0)
 AXLE = (math.radians(90), 0, 0)
 parts = []
-tire = cyl(0.335, 0.28, (0, 0, 0), RUBBER, rot=AXLE, verts=28, smooth=True)
+tire = cyl(0.395, 0.36, (0, 0, 0), RUBBER, rot=AXLE, verts=28, smooth=True)
 bev = tire.modifiers.new("bevel", "BEVEL")
-bev.width, bev.segments, bev.limit_method = 0.07, 3, "ANGLE"  # rounded sidewalls
+bev.width, bev.segments, bev.limit_method = 0.08, 3, "ANGLE"  # rounded sidewalls
 parts.append(tire)
 for n in range(26):  # staggered tread blocks around the circumference
     phi = n / 26 * math.tau
     for side in (-1, 1):
         off = 0.02 if n % 2 else -0.02
-        r = 0.347
-        blk = box((0.06, 0.1, 0.026), (math.sin(phi) * r, side * 0.075 + off * side, math.cos(phi) * r), RUBBER,
+        r = 0.414
+        blk = box((0.07, 0.13, 0.03), (math.sin(phi) * r, side * 0.105 + off * side, math.cos(phi) * r), RUBBER,
                   rot=(0, phi, 0), bevel=0.01)
         parts.append(blk)
-parts.append(cyl(0.215, 0.31, (0, 0, 0), RIM_DARK, rot=AXLE, verts=24, smooth=True))  # rim barrel
+parts.append(cyl(0.265, 0.39, (0, 0, 0), RIM_DARK, rot=AXLE, verts=24, smooth=True))  # rim barrel
 for face in (-1, 1):
-    y = face * 0.155
-    parts.append(cyl(0.2, 0.02, (0, y, 0), RIM_DARK, rot=AXLE, verts=24, smooth=True))  # recessed rim face
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.2, minor_radius=0.02, location=(0, y, 0), rotation=AXLE,
+    y = face * 0.195
+    parts.append(cyl(0.245, 0.022, (0, y, 0), RIM_DARK, rot=AXLE, verts=24, smooth=True))  # recessed rim face
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.245, minor_radius=0.024, location=(0, y, 0), rotation=AXLE,
                                      major_segments=28, minor_segments=6)
     parts.append(finish(bpy.context.active_object, RIM, flat=False))  # bright rim lip
     for s in range(5):  # spokes
         a = s / 5 * math.tau
-        parts.append(box((0.05, 0.03, 0.17), (math.sin(a) * 0.1, y + face * 0.022, math.cos(a) * 0.1), RIM,
+        parts.append(box((0.055, 0.034, 0.205), (math.sin(a) * 0.12, y + face * 0.024, math.cos(a) * 0.12), RIM,
                          rot=(0, a, 0), bevel=0.008))
-    parts.append(cyl(0.065, 0.03, (0, y + face * 0.02, 0), ORANGE, rot=AXLE, verts=16, smooth=True))  # hubcap
+    parts.append(cyl(0.075, 0.034, (0, y + face * 0.024, 0), ORANGE, rot=AXLE, verts=16, smooth=True))  # hubcap
 wheel = join_as(parts, "wheel")
 wheel.location = (0, -4, 0)  # out of the way; three.js places four copies
 

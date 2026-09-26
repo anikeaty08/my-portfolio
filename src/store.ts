@@ -32,9 +32,12 @@ type State = {
   pilotBar: boolean;
 };
 
+const initialClassic = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("classic");
+const initialStarted = initialClassic || (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("start"));
+
 let state: State = {
-  started: false,
-  classic: false,
+  started: initialStarted,
+  classic: initialClassic,
   fallback: null,
   zone: null,
   panel: null,

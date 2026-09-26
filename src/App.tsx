@@ -65,7 +65,7 @@ export default function App() {
 
   return (
     <>
-      {webgl && (
+      {webgl && !classic && (
         <Suspense fallback={null}>
           <Game
             onLost={() => {
@@ -81,7 +81,7 @@ export default function App() {
           <Panel />
         </>
       )}
-      {webgl && <Loader />}
+      {webgl && !classic && <Loader />}
       {classic && <Classic canDrive={webgl} />}
     </>
   );

@@ -23,8 +23,9 @@ const WHEELS = [
   { pos: new THREE.Vector3(-0.8, 0, -0.64), front: false },
   { pos: new THREE.Vector3(-0.8, 0, 0.64), front: false },
 ];
-const WHEEL_RADIUS = 0.36;
-const REST = 0.32;
+// Matches the deliberately oversized Blender wheel, preventing visual wheel slip.
+const WHEEL_RADIUS = 0.42;
+const REST = 0.34;
 
 // Checked with a headless Rapier simulation: 0→8.6 m/s in 1 s, capped at 17 m/s, reverse 7 m/s.
 const TUNE = {
@@ -67,7 +68,7 @@ export function Car({ data }: { data: WorldData }) {
     wheel.children.forEach((m) => (m as THREE.Mesh).geometry.translate(-center.x, -center.y, -center.z));
     let paint: THREE.MeshStandardMaterial | null = null;
     // The body paint gets its own material so skins can recolor it.
-    const swap = (mat: THREE.Material) => (mat.name === "orange" ? (paint ??= (mat as THREE.MeshStandardMaterial).clone()) : mat);
+    const swap = (mat: THREE.Material) => (mat.name.startsWith("orange") ? (paint ??= (mat as THREE.MeshStandardMaterial).clone()) : mat);
     for (const o of [chassis, wheel]) {
       o.traverse((m) => {
         const mesh = m as THREE.Mesh;

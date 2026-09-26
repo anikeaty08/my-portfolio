@@ -1,6 +1,6 @@
 import { autopilot, stopAutopilot, trace } from "./autopilot";
 import { telemetry } from "./controls";
-import { lightIsRed, npcs } from "./signals";
+import { lightIsRed, npcs, pedestrians } from "./signals";
 import type { WorldData } from "./World";
 
 const CRUISE = 9; // m/s
@@ -62,9 +62,21 @@ export function driveStep(dt: number, time: number, data: WorldData) {
     const dz = n.z - z;
     const ahead = dx * fx + dz * fz;
     const lateral = Math.abs(dx * fz - dz * fx);
-    if (ahead > 0 && ahead < 10 && lateral < 2.4) {
+    if (ahead > 0 && ahead < 10 && lateral < 1.05) {
       target = Math.min(target, Math.max(0, (ahead - 4.5) * 0.9));
       why = "Braking for traffic";
+    }
+  }
+
+  // A cautious driver gives a moving person space at the marked city crossings.
+  for (const person of pedestrians) {
+    const dx = person.x - x;
+    const dz = person.z - z;
+    const ahead = dx * fx + dz * fz;
+    const lateral = Math.abs(dx * fz - dz * fx);
+    if (ahead > 0 && ahead < 9 && lateral < 2.1) {
+      target = Math.min(target, Math.max(0, (ahead - 3.3) * 0.85));
+      why = "Yielding at the crosswalk";
     }
   }
 

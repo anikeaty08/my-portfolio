@@ -2,6 +2,7 @@ import emailjs from "@emailjs/browser";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { about, experience, person, projects, skills, type Project } from "../content";
 import { setState, useStore, type ZoneId } from "../store";
+import { rollBowlingBall } from "../game/World";
 
 const EMAIL_SERVICE = import.meta.env.VITE_EMAILJS_SERVICE_ID?.trim() ?? "";
 const EMAIL_TEMPLATE = import.meta.env.VITE_EMAILJS_TEMPLATE_ID?.trim() ?? "";
@@ -218,10 +219,34 @@ function LighthouseBody() {
 }
 
 function BowlingBody() {
+  const [aim, setAim] = useState(0);
+  const [power, setPower] = useState(12);
+  const [rolled, setRolled] = useState(false);
   return (
     <>
-      <p className="lead">Nudge the ball down the lane with your bumper — gently, or it jumps the gutter. All ten pins earns a trophy.</p>
-      <p className="muted">The pins reset themselves a few seconds after every roll.</p>
+      <p className="lead">Line up the shot, choose the pace, and send it through the pocket. Ten pins unlocks the Strike trophy.</p>
+      <div className="bowling-controls">
+        <label>
+          <span>Aim</span>
+          <input type="range" min="-1" max="1" step="0.05" value={aim} onChange={(e) => setAim(Number(e.target.value))} />
+          <output>{aim < -0.12 ? "Left" : aim > 0.12 ? "Right" : "Center"}</output>
+        </label>
+        <label>
+          <span>Power</span>
+          <input type="range" min="7" max="18" step="0.5" value={power} onChange={(e) => setPower(Number(e.target.value))} />
+          <output>{Math.round(((power - 7) / 11) * 100)}%</output>
+        </label>
+        <button
+          className="btn btn--primary bowling-roll"
+          onClick={() => {
+            setRolled(rollBowlingBall(power, aim));
+            setState({ panel: null });
+          }}
+        >
+          Roll the ball
+        </button>
+      </div>
+      <p className="muted">{rolled ? "Ball away — watch the lane." : "You can still use the car bumper for a freestyle shot."} Pins reset after every completed roll.</p>
     </>
   );
 }

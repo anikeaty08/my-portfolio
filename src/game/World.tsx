@@ -8,7 +8,7 @@ import { getState } from "../store";
 import { progress } from "./achievements";
 import { telemetry } from "./controls";
 import { bakeRelativeTo, frameFrom, toFloat } from "./bake";
-import { lightPhase } from "./signals";
+import { lightPhase, pedestrians as pedestrianSignals } from "./signals";
 import { wind } from "./wind";
 
 // ---------------------------------------------------------------- world.json (written by build_world.py)
@@ -25,6 +25,7 @@ type DynamicDef =
   | (DynamicBase & { shape: "box"; half: Vec3 })
   | (DynamicBase & { shape: "ball"; radius: number })
   | (DynamicBase & { shape: "cyl"; radius: number; halfHeight: number });
+type Pedestrian = { node: string; center: [number, number]; axis: [number, number]; span: number; phase: number };
 export type WorldData = {
   ground: number;
   islandRadius: number;
@@ -33,6 +34,8 @@ export type WorldData = {
   dynamic: DynamicDef[];
   zones: Zone[];
   animated: string[];
+  /** Moving people at zebra crossings. Positions are shared with the traffic-aware autopilot. */
+  pedestrians: Pedestrian[];
   roads: { ringIn: number; ringOut: number; plaza: number; spokeHalf: number; spokes: number[] };
   clearings: [number, number, number][];
   /** Sand outline radius at 64 angles (theta = atan2(z, x)). */
@@ -66,6 +69,22 @@ export function resetGroup(group: string) {
     b.rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
     b.rb.setAngvel({ x: 0, y: 0, z: 0 }, true);
   }
+}
+
+/** Resets the lane and launches the bowling ball toward the rack with adjustable aim and power. */
+export function rollBowlingBall(power: number, aim: number) {
+  const ball = props.find((p) => p.group === "ball");
+  const pins = props.filter((p) => p.group === "pin");
+  if (!ball || !pins.length) return false;
+  resetGroup("pin");
+  resetGroup("ball");
+  const target = pins.reduce((sum, pin) => sum.add(pin.home.p), new THREE.Vector3()).multiplyScalar(1 / pins.length);
+  const forward = target.sub(ball.home.p).setY(0).normalize();
+  const side = new THREE.Vector3(-forward.z, 0, forward.x);
+  const direction = forward.addScaledVector(side, THREE.MathUtils.clamp(aim, -1, 1) * 0.28).normalize();
+  ball.rb.applyImpulse({ x: direction.x * power, y: 0.15, z: direction.z * power }, true);
+  ball.rb.applyTorqueImpulse({ x: direction.z * power * 0.08, y: 0, z: -direction.x * power * 0.08 }, true);
+  return true;
 }
 
 // ---------------------------------------------------------------- scene extraction
@@ -190,19 +209,21 @@ function StaticColliders({ data, trimeshes }: { data: WorldData; trimeshes: { ve
 }
 
 const NOISY = new Set(["pin", "crate", "brick", "block", "ball"]);
+const SLIDEABLE = new Set(["cone", "crate", "brick", "block", "pin", "ball"]);
 
 function Props({ items }: { items: Prop[] }) {
   return (
     <>
       {items.map((p) => {
         const d = p.def;
+        const slideable = SLIDEABLE.has(d.group);
         const collider =
           d.shape === "ball" ? (
-            <BallCollider args={[d.radius]} mass={d.mass} friction={0.3} restitution={0.15} />
+            <BallCollider args={[d.radius]} mass={d.mass} friction={0.18} restitution={0.25} />
           ) : d.shape === "cyl" ? (
-            <CylinderCollider args={[d.halfHeight, d.radius]} mass={d.mass} friction={0.5} restitution={0.3} />
+            <CylinderCollider args={[d.halfHeight, d.radius]} mass={d.mass} friction={slideable ? 0.28 : 0.5} restitution={0.28} />
           ) : (
-            <CuboidCollider args={d.half} mass={d.mass} friction={0.8} restitution={0.2} />
+            <CuboidCollider args={d.half} mass={d.mass} friction={slideable ? 0.3 : 0.8} restitution={slideable ? 0.24 : 0.2} />
           );
         return (
           <RigidBody
@@ -217,8 +238,9 @@ function Props({ items }: { items: Prop[] }) {
             position={p.position}
             quaternion={p.quaternion}
             colliders={false}
-            linearDamping={d.shape === "ball" ? 0.15 : 0.3}
-            angularDamping={d.shape === "ball" ? 0.2 : 0.4}
+            ccd={slideable}
+            linearDamping={d.shape === "ball" ? 0.08 : slideable ? 0.1 : 0.3}
+            angularDamping={d.shape === "ball" ? 0.12 : slideable ? 0.16 : 0.4}
             canSleep
             onContactForce={
               NOISY.has(d.group)
@@ -263,7 +285,7 @@ function prepareBuildings(animated: Map<string, THREE.Object3D>) {
   return out;
 }
 
-function Animator({ animated }: { animated: Map<string, THREE.Object3D> }) {
+function Animator({ animated, pedestrians }: { animated: Map<string, THREE.Object3D>; pedestrians: Pedestrian[] }) {
   const buildings = useMemo(() => prepareBuildings(animated), [animated]);
   const windowMats = useMemo(() => {
     const set = new Set<THREE.MeshStandardMaterial>();
@@ -271,6 +293,21 @@ function Animator({ animated }: { animated: Map<string, THREE.Object3D> }) {
     return [...set];
   }, [buildings]);
   const clouds = useMemo(() => [...animated].filter(([n]) => n.startsWith("cloud_")).map(([, o]) => ({ o, r: Math.hypot(o.position.x, o.position.z), a: Math.atan2(o.position.z, o.position.x) })), [animated]);
+  const walkers = useMemo(() => new Map(pedestrians.map((def) => [def.node, def])), [pedestrians]);
+  const humans = useMemo(
+    () =>
+      [...animated]
+        .filter(([name]) => name.startsWith("human_"))
+        .map(([name, root]) => ({
+          name,
+          root,
+          leftLeg: root.getObjectByName(`${name}_leg_l`),
+          rightLeg: root.getObjectByName(`${name}_leg_r`),
+          leftArm: root.getObjectByName(`${name}_arm_l`),
+          rightArm: root.getObjectByName(`${name}_arm_r`),
+        })),
+    [animated],
+  );
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
     wind.uniform.value = t;
@@ -303,6 +340,43 @@ function Animator({ animated }: { animated: Map<string, THREE.Object3D> }) {
       c.a += delta * 0.012;
       c.o.position.x = Math.cos(c.a) * c.r;
       c.o.position.z = Math.sin(c.a) * c.r;
+    }
+    pedestrianSignals.length = 0;
+    for (const human of humans) {
+      const { name, root } = human;
+      const walker = walkers.get(name);
+      const baseY = (root.userData.baseY ??= root.position.y) as number;
+      const dx = root.position.x - telemetry.x;
+      const dz = root.position.z - telemetry.z;
+      const distance = Math.hypot(dx, dz);
+      // A fast approaching car makes a pedestrian startle and move out of its path.
+      if (distance < 2.35 && Math.abs(telemetry.speed) > 1.4) {
+        const len = Math.max(distance, 0.01);
+        root.userData.fleeUntil = t + 2.4;
+        root.userData.fleeX = dx / len;
+        root.userData.fleeZ = dz / len;
+      }
+      const fleeing = t < Number(root.userData.fleeUntil ?? 0);
+      if (!fleeing && walker) {
+        const cross = Math.sin(t * 0.72 + walker.phase) * (walker.span / 2);
+        root.position.x = walker.center[0] + walker.axis[0] * cross;
+        root.position.z = walker.center[1] + walker.axis[1] * cross;
+        root.rotation.y = Math.atan2(-walker.axis[1], walker.axis[0]);
+      } else if (fleeing) {
+        root.position.x += Number(root.userData.fleeX) * delta * 3.4;
+        root.position.z += Number(root.userData.fleeZ) * delta * 3.4;
+        root.rotation.y = Math.atan2(-Number(root.userData.fleeZ), Number(root.userData.fleeX));
+      }
+      const walking = Boolean(walker) || fleeing;
+      const gait = t * (walking ? 8.5 : 2.1) + root.position.x * 0.3 + root.position.z * 0.17;
+      const stride = Math.sin(gait) * (walking ? 0.68 : 0.06);
+      if (human.leftLeg) human.leftLeg.rotation.z = stride;
+      if (human.rightLeg) human.rightLeg.rotation.z = -stride;
+      if (human.leftArm) human.leftArm.rotation.z = -stride * 0.82;
+      if (human.rightArm) human.rightArm.rotation.z = stride * 0.82;
+      root.position.y = baseY + (walking ? Math.abs(Math.sin(gait)) * 0.055 : Math.sin(gait) * 0.018);
+      root.rotation.z = fleeing ? Math.sin(gait * 0.5) * 0.1 : 0;
+      if (walker) pedestrianSignals.push({ x: root.position.x, z: root.position.z });
     }
     animated.forEach((node, name) => {
       if (name.startsWith("pad_")) {
@@ -345,7 +419,7 @@ export function World({ data }: { data: WorldData }) {
       <primitive object={scene} />
       <StaticColliders data={data} trimeshes={trimeshes} />
       <Props items={items} />
-      <Animator animated={animated} />
+      <Animator animated={animated} pedestrians={data.pedestrians} />
     </>
   );
 }

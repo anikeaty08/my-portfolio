@@ -7,3 +7,4 @@ dist
 public/resume.pdf
 extracted/
 .sim/
+scripts/blender/__pycache__/

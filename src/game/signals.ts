@@ -11,3 +11,6 @@ export function lightIsRed(t: number) {
 
 /** NPC car positions (three.js x/z), written by Traffic every frame. */
 export const npcs: { x: number; z: number; thought: string }[] = [];
+
+/** Crossing positions (three.js x/z), written by the world animation every frame. */
+export const pedestrians: { x: number; z: number }[] = [];

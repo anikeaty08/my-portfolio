@@ -55,10 +55,11 @@ function TopBar() {
 }
 
 const QUICK: { id: string; label: string }[] = [
-  { id: "project:polychat", label: "Projects" },
+  { id: `project:${projects[0]?.slug ?? "cortex"}`, label: "Projects" },
   { id: "about", label: "About" },
   { id: "skills", label: "Skills" },
   { id: "contact", label: "Contact" },
+  { id: "mcp", label: "MCP" },
   { id: "bowling", label: "Bowling" },
 ];
 
@@ -161,7 +162,15 @@ function Minimap({ data }: { data: WorldData | null }) {
     ctx.scale(dpr, dpr);
     const R = data.islandRadius + 5;
     const toMap = (x: number, z: number) => [size / 2 + (x / R) * (size / 2 - 6), size / 2 + (z / R) * (size / 2 - 6)] as const;
-    const colors: Record<string, string> = { project: "#ff6b2c", about: "#ffd36b", skills: "#5ee6ff", contact: "#e2412f", lighthouse: "#ffffff" };
+    const colors: Record<string, string> = {
+      project: "#ff6b2c",
+      about: "#ffd36b",
+      skills: "#5ee6ff",
+      contact: "#e2412f",
+      mcp: "#a78bfa",
+      bowling: "#f5b83d",
+      lighthouse: "#ffffff",
+    };
     let raf = 0;
     const draw = () => {
       ctx.clearRect(0, 0, size, size);

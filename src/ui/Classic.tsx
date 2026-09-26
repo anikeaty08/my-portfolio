@@ -14,6 +14,13 @@ function jump(id: string) {
   document.getElementById(`c-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+function driveIsland() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("classic");
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  setState({ classic: false, started: false, panel: null, pilotBar: false });
+}
+
 /** The whole portfolio as a normal page — for recruiters in a hurry and devices without WebGL2. */
 export function Classic({ canDrive }: { canDrive: boolean }) {
   const fallback = useStore((s) => s.fallback);
@@ -37,7 +44,7 @@ export function Classic({ canDrive }: { canDrive: boolean }) {
             Resume
           </a>
           {canDrive && (
-            <button className="btn btn--small btn--primary" onClick={() => setState({ classic: false })}>
+            <button className="btn btn--small btn--primary" onClick={driveIsland}>
               Drive the island →
             </button>
           )}
@@ -83,7 +90,7 @@ export function Classic({ canDrive }: { canDrive: boolean }) {
         <figure className="c-hero__art">
           <img src="/world/hero.webp" alt="A low-poly island with a little orange car, modeled in Blender — the 3D version of this site" />
           {canDrive && (
-            <button className="c-sticker" onClick={() => setState({ classic: false })}>
+            <button className="c-sticker" onClick={driveIsland}>
               <strong>Drive it</strong>
               <span>it's a real 3D world →</span>
             </button>

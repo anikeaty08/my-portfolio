@@ -9,12 +9,40 @@ import { telemetry } from "./controls";
 import { npcs } from "./signals";
 import type { WorldData } from "./World";
 
-const COLORS = ["#3b82f6", "#10b981", "#e5e7eb"];
+const TRAFFIC = [
+  { color: "#3478f6", variant: "sport" },
+  { color: "#16a56f", variant: "delivery" },
+  { color: "#f4f0df", variant: "taxi" },
+] as const;
 const CRUISE = 7.5; // m/s
 const ACCEL = 2.5; // m/s²
 const BRAKE = 9; // m/s²
 const STOP_GAP = 5.5; // m, bumper to bumper-ish
 const SLOW_GAP = 16; // m, start easing off
+
+function trim(size: [number, number, number], position: [number, number, number], color: string) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(...size),
+    new THREE.MeshStandardMaterial({ color, roughness: 0.45, metalness: 0.15 }),
+  );
+  mesh.position.set(...position);
+  mesh.castShadow = true;
+  return mesh;
+}
+
+/** Small silhouette changes stop traffic from reading as three cloned cars with different paint. */
+function addVariant(group: THREE.Group, variant: (typeof TRAFFIC)[number]["variant"]) {
+  if (variant === "delivery") {
+    group.add(trim([0.78, 0.58, 1.02], [-0.56, 0.58, 0], "#e7f4ed"));
+    group.add(trim([0.08, 0.42, 1.07], [-0.96, 0.58, 0], "#116149"));
+  } else if (variant === "taxi") {
+    group.add(trim([0.42, 0.16, 0.28], [-0.1, 0.98, 0], "#f3bd2e"));
+    group.add(trim([1.8, 0.045, 0.11], [0.05, 0.43, 0], "#f3bd2e"));
+  } else {
+    group.add(trim([1.98, 0.045, 0.12], [0.08, 0.44, 0], "#8bd7ff"));
+    group.add(trim([0.16, 0.14, 1.44], [-1.25, 0.71, 0], "#1b2638"));
+  }
+}
 
 /**
  * NPC cars on the inner lane of the ring road, driving clockwise (against the player's lap direction).
@@ -24,17 +52,18 @@ const SLOW_GAP = 16; // m, start easing off
 export function Traffic({ data }: { data: WorldData }) {
   const { scene } = useGLTF("/world/car.glb");
   const bodies = useRef<(RapierRigidBody | null)[]>([]);
-  const lane = data.roads.ringIn + (data.roads.ringOut - data.roads.ringIn) * 0.27;
+  // NPCs own the inner lane; autopilot routes on the centre line, so two-way traffic can pass safely.
+  const lane = data.roads.ringIn + 0.85;
 
   const cars = useMemo(() => {
     const wheel = bakeRelativeTo(scene.getObjectByName("wheel")!, new THREE.Matrix4());
     const center = new THREE.Box3().setFromObject(wheel).getCenter(new THREE.Vector3());
     wheel.children.forEach((m) => (m as THREE.Mesh).geometry.translate(-center.x, -center.y, -center.z));
-    return COLORS.map((color, i) => {
+    return TRAFFIC.map(({ color, variant }, i) => {
       const group = new THREE.Group();
       const body = bakeRelativeTo(scene.getObjectByName("body")!, new THREE.Matrix4());
       const recolor = (mat: THREE.Material) => {
-        if (mat.name !== "orange") return mat;
+        if (!mat.name.startsWith("orange")) return mat;
         const c = (mat as THREE.MeshStandardMaterial).clone();
         c.color.set(color);
         return c;
@@ -47,13 +76,14 @@ export function Traffic({ data }: { data: WorldData }) {
       });
       const lamps = takeLampMaterials(body);
       group.add(body);
+      addVariant(group, variant);
       for (const [x, z] of [[0.8, -0.64], [0.8, 0.64], [-0.8, -0.64], [-0.8, 0.64]]) {
         const w = wheel.clone();
         w.position.set(x, -0.3, z);
         group.add(w);
       }
       // Evenly spaced round the ring; angle decreases as they drive (clockwise from above).
-      return { group, lamps, angle: (i / COLORS.length) * Math.PI * 2, speed: CRUISE, braking: false, thought: "Cruising the ring" };
+      return { group, lamps, angle: (i / TRAFFIC.length) * Math.PI * 2, speed: CRUISE, braking: false, thought: "Cruising the ring" };
     });
   }, [scene]);
 
@@ -63,7 +93,7 @@ export function Traffic({ data }: { data: WorldData }) {
   useFrame((_, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
     const playerAngle = Math.atan2(telemetry.z, telemetry.x);
-    const playerOnLane = Math.abs(Math.hypot(telemetry.x, telemetry.z) - lane) < 2.4;
+    const playerOnLane = Math.abs(Math.hypot(telemetry.x, telemetry.z) - lane) < 1.05;
 
     cars.forEach((car, i) => {
       // Distance along the lane to the nearest thing ahead (the player, or another NPC).

@@ -35,8 +35,8 @@ function beamGeometry() {
 export function takeLampMaterials(root: THREE.Object3D) {
   const lamps = { head: null as THREE.MeshStandardMaterial | null, tail: null as THREE.MeshStandardMaterial | null };
   const swap = (mat: THREE.Material) => {
-    if (mat.name === "warm_glow") return (lamps.head ??= (mat as THREE.MeshStandardMaterial).clone());
-    if (mat.name === "red_glow") return (lamps.tail ??= (mat as THREE.MeshStandardMaterial).clone());
+    if (mat.name.startsWith("warm_glow")) return (lamps.head ??= (mat as THREE.MeshStandardMaterial).clone());
+    if (mat.name.startsWith("red_glow")) return (lamps.tail ??= (mat as THREE.MeshStandardMaterial).clone());
     return mat;
   };
   root.traverse((o) => {

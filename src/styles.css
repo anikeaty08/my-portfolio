@@ -1028,15 +1028,23 @@ kbd {
     bottom: auto;
     right: var(--gutter);
     left: var(--gutter);
-    justify-content: space-between;
+    justify-content: flex-start;
     padding: 0.25rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+  .quick::-webkit-scrollbar {
+    display: none;
   }
   .quick span {
     display: none;
   }
   .quick button {
-    flex: 1;
-    padding: 0.45rem 0.2rem;
+    flex: 0 0 auto;
+    min-height: 38px;
+    padding: 0.45rem 0.65rem;
     font-size: 0.78rem;
   }
   .minimap {
@@ -1614,4 +1622,36 @@ kbd {
   font-family: var(--mono);
   font-size: 0.75rem;
   overflow-x: auto;
+}
+
+.bowling-controls {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.2rem 0 1rem;
+  padding: 1rem;
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  background: #f4ead8;
+}
+.bowling-controls label {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr 3.5rem;
+  align-items: center;
+  gap: 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.bowling-controls input {
+  width: 100%;
+  accent-color: var(--accent, #ff6b2c);
+}
+.bowling-controls output {
+  text-align: right;
+  color: #64748b;
+}
+.bowling-roll {
+  width: 100%;
+  justify-content: center;
 }
