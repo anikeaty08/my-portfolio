@@ -1,88 +1,88 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { setSound } from "./audio";
-import { markSeen, trackKonami } from "./game/achievements";
-import { bindKeyboard, input } from "./game/controls";
-import { quality } from "./game/quality";
-import type { WorldData } from "./game/World";
-import { getState, setState, useStore } from "./store";
-import { Classic } from "./ui/Classic";
-import { Hud } from "./ui/Hud";
-import { Loader } from "./ui/Loader";
-import { Panel } from "./ui/Panels";
+import { Toaster } from "sonner";
+import { Nav } from "./components/Nav";
+import { Hero } from "./components/Hero";
+import { Experience } from "./components/Experience";
+import { Projects } from "./components/Projects";
+import { Skills } from "./components/Skills";
+import { OwnerDialog } from "./components/OwnerDialog";
+import { useIsOwner } from "./lib/owner";
+import { articleIdFromHash, scrollToId, useHash } from "./lib/route";
 
-const Game = lazy(() => import("./game/Game").then((m) => ({ default: m.Game })));
+// Below-the-fold, article and owner-only code is split out of the first load.
+const Writing = lazy(() => import("./components/Writing"));
+const Contact = lazy(() => import("./components/Contact"));
+const ArticlePage = lazy(() => import("./components/ArticlePage"));
+const ArticleEditor = lazy(() => import("./components/ArticleEditor").then((m) => ({ default: m.ArticleEditor })));
+
+function SectionSkeleton() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-28 sm:px-6" aria-hidden>
+      <div className="skeleton h-4 w-24" />
+      <div className="skeleton mt-4 h-9 w-64" />
+      <div className="skeleton mt-10 h-40 w-full" />
+    </div>
+  );
+}
 
 export default function App() {
-  const classic = useStore((s) => s.classic);
-  const started = useStore((s) => s.started);
-  const [webgl, setWebgl] = useState(quality.webgl2);
-  const [data, setData] = useState<WorldData | null>(null);
+  const isOwner = useIsOwner();
+  const hash = useHash();
+  const articleId = articleIdFromHash(hash);
+  const [writing, setWriting] = useState(false);
+  const [signIn, setSignIn] = useState(false);
 
+  // A hash like #/article/<id> is a page; a plain hash like #projects scrolls to that section.
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
-    if (!webgl) setState({ started: true, classic: true, fallback: "no-webgl" });
-    else if (q.has("classic")) setState({ started: true, classic: true });
-    else if (q.has("start")) setState({ started: true });
-    // Dev-only: ?autodrive=<throttle>,<steer> holds the controls, for testing handling in a headless browser.
-    if (import.meta.env.DEV && q.has("autodrive")) {
-      const [t, s] = (q.get("autodrive") || "1,0").split(",").map(Number);
-      Object.assign(input, { throttle: t, steer: s || 0 });
-    }
-    if (import.meta.env.DEV && q.get("panel")) setState({ panel: q.get("panel") });
-    if (import.meta.env.DEV && q.has("night")) setState({ night: true });
-    if (import.meta.env.DEV && q.get("tp")) setState({ teleport: { key: 1, zone: q.get("tp")! } });
-  }, [webgl]);
-
-  useEffect(() => {
-    fetch("/world/world.json")
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => undefined);
-  }, []);
-
-  const panel = useStore((s) => s.panel);
-  useEffect(() => {
-    if (panel) markSeen(panel);
-  }, [panel]);
-
-  useEffect(
-    () =>
-      bindKeyboard((code) => {
-        const s = getState();
-        if (!s.started || s.classic) return;
-        trackKonami(code);
-        if (code === "Enter" && s.zone && !s.panel) setState({ panel: s.zone });
-        else if (code === "Escape") setState({ panel: null, trophies: false });
-        else if (code === "KeyR") setState({ resetTick: s.resetTick + 1 });
-        else if (code === "KeyN") setState({ night: !s.night });
-        else if (code === "KeyM") {
-          setState({ sound: !s.sound });
-          void setSound(!s.sound);
-        }
-      }),
-    [],
-  );
+    if (articleId) window.scrollTo(0, 0);
+    else if (hash.length > 1 && !hash.startsWith("#/")) scrollToId(hash.slice(1));
+  }, [articleId, hash]);
 
   return (
     <>
-      {webgl && !classic && (
+      <a
+        href={articleId ? "#writing" : "#experience"}
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-accent-ink"
+      >
+        {articleId ? "Back to the portfolio" : "Skip to content"}
+      </a>
+      <Nav onWrite={() => setWriting(true)} activeHash={hash} isArticle={Boolean(articleId)} />
+
+      {articleId ? (
+        <Suspense fallback={<SectionSkeleton />}>
+          <ArticlePage id={articleId} />
+        </Suspense>
+      ) : (
+        <main>
+          <Hero />
+          <Experience />
+          <Projects />
+          <Skills />
+          <Suspense fallback={<SectionSkeleton />}>
+            <Writing onWrite={() => setWriting(true)} />
+            <Contact />
+          </Suspense>
+        </main>
+      )}
+
+      <footer className="border-t border-border">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-8 text-sm text-muted sm:px-6">
+          <p>© {new Date().getFullYear()} Anikeat Yadav · Bengaluru</p>
+          {!isOwner && (
+            <button onClick={() => setSignIn(true)} className="h-11 rounded-lg px-3 hover:text-fg">
+              Owner sign-in
+            </button>
+          )}
+        </div>
+      </footer>
+
+      {isOwner && writing && (
         <Suspense fallback={null}>
-          <Game
-            onLost={() => {
-              setWebgl(false);
-              setState({ started: true, classic: true, fallback: "gpu-lost" });
-            }}
-          />
+          <ArticleEditor open={writing} onOpenChange={setWriting} />
         </Suspense>
       )}
-      {webgl && !classic && started && (
-        <>
-          <Hud data={data} />
-          <Panel />
-        </>
-      )}
-      {webgl && !classic && <Loader />}
-      {classic && <Classic canDrive={webgl} />}
+      <OwnerDialog open={signIn} onOpenChange={setSignIn} />
+      <Toaster position="bottom-right" theme="system" closeButton />
     </>
   );
 }

@@ -1,0 +1,36 @@
+MODEL: Qwen/Qwen2.5-0.5B-Instruct
+GENERATION: greedy, max 110 new tokens
+
+ARCHIVED POLICY
+QUESTION: Can I get a refund on my yearly plan after 45 days?
+SOURCE [1]: billing/refunds-2024.md
+EVIDENCE: Annual plans can be refunded within 60 days of purchase.
+MODEL ANSWER: Yes, you can get a refund on your yearly plan after 45 days.
+ELAPSED: 4.59s
+
+CURRENT POLICY
+QUESTION: Can I get a refund on my yearly plan after 45 days?
+SOURCE [1]: billing/refunds.md
+EVIDENCE: Annual plans can be refunded within 30 days of purchase.
+MODEL ANSWER: No, you cannot get a refund on your yearly plan after 45 days. The information provided states that annual plans can be refunded within 30 days of purchase. Therefore, if you want to receive a refund for your yearly plan, you should wait until the next 30-day window or purchase another year's plan.
+ELAPSED: 13.21s
+
+REAL SOURCE PASSAGE
+QUESTION: Why is Graph RAG a poor fit for a simple refund-policy lookup?
+SOURCE [1]: Graph RAG notes — Costs and honest limits
+EVIDENCE: Building a graph from text costs many LLM calls; large corpora can be expensive.
+Extraction makes mistakes (missed links, wrong merges), and a wrong edge can mislead confidently.
+A graph needs maintenance as source documents change.
+For purely single-passage questions, a graph adds cost without improving answers.
+MODEL ANSWER: Graph RAG is a poor fit for a simple refund-policy lookup because it requires significant computational resources to extract accurate information from large corpora of text. The other factors mentioned—costs associated with building graphs, extraction errors, potential misleading edges, and the need for ongoing maintenance—are all reasons why Graph RAG may not be suitable for this specific type of question.
+ELAPSED: 14.91s
+
+SOURCE HAS NO ANSWER
+QUESTION: Who approved the company's Graph RAG rollout?
+SOURCE [1]: Graph RAG notes — Costs and honest limits
+EVIDENCE: Building a graph from text costs many LLM calls; large corpora can be expensive.
+Extraction makes mistakes (missed links, wrong merges), and a wrong edge can mislead confidently.
+A graph needs maintenance as source documents change.
+For purely single-passage questions, a graph adds cost without improving answers.
+MODEL ANSWER: The source provided does not contain any information about who approved the company's Graph RAG rollout. Therefore, based on the given source, we cannot determine who approved the rollout.
+ELAPSED: 8.33s
