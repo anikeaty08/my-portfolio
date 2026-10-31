@@ -8,7 +8,7 @@ export const staticArticles: Article[] = [
     id: "rag-complete-guide",
     title: "The source was real. The policy was wrong.",
     summary:
-      "An archived policy made a model say yes. The current one made it say no—and still produced unsupported advice. Follow the evidence through the fixes, then see when graphs and agents actually help.",
+      "An archived policy led a model to one answer. The current policy led it to another — but still left room for unsupported advice. A practical case study in tracing retrieval failures, improving RAG pipelines, and understanding when graph-based retrieval or agents are worth introducing.",
     tags: ["RAG", "Case study", "Graph RAG", "Agentic RAG", "Web search"],
     body: ragBody,
     createdAt: "2026-10-16T09:00:00.000Z",

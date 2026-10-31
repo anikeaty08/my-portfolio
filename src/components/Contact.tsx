@@ -51,11 +51,11 @@ export default function Contact() {
     ) : null;
 
   return (
-    <Section id="contact" eyebrow="05 — Say hello" title="Let's build something">
+    <Section id="contact" eyebrow="05 — Contact" title="Get in touch">
       <div className="grid gap-10 lg:grid-cols-2">
         <div data-reveal>
           <p className="max-w-md text-lg text-muted">
-            Open to AI agent and ML engineering roles, internships and interesting collaborations. The fastest way to reach me is email.
+            I'm interested in AI engineering, agent systems, and machine learning opportunities. Always open to interesting technical problems, collaborations, and conversations.
           </p>
           <dl className="mt-8 space-y-4">
             <div>
@@ -75,7 +75,7 @@ export default function Contact() {
               </dd>
             </div>
             <div>
-              <dt className="font-mono text-xs uppercase tracking-wider text-muted">Based in</dt>
+              <dt className="font-mono text-xs uppercase tracking-wider text-muted">Location</dt>
               <dd>{profile.location}</dd>
             </div>
           </dl>

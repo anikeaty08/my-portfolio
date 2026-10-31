@@ -9,7 +9,7 @@ export const profile = {
   githubUser: "anikeaty08",
   linkedin: "https://linkedin.com/in/anikeat-yadav-9b0551338",
   intro:
-    "I work on planning, tool use, document reading, and the checks that help these systems run reliably.",
+    "I work on AI agents, tool orchestration, and the infrastructure behind them — building systems that can understand a task, take action, and deliver reliable results.",
 };
 
 export const experience = {
@@ -18,10 +18,10 @@ export const experience = {
   place: "Bengaluru, India",
   period: "Apr 2026 – Oct 2026",
   points: [
-    "Worked on internal AI automation systems involving document preprocessing, OCR and vision model workflows.",
-    "Built agent orchestration workflows using the OpenAI SDK/API for multi-step automation and tool-based execution.",
-    "Developed ReAct agent workflows for reliable task execution and automation.",
-    "Integrated Amazon Bedrock agents into internal AI workflows, focusing on agent coordination and tool execution.",
+    "Developed internal AI automation workflows involving document preprocessing, OCR, and vision-based extraction.",
+    "Built multi-step agent workflows using the OpenAI SDK, integrating tools and structured execution paths.",
+    "Implemented ReAct-based agents for reasoning, tool selection, and task execution.",
+    "Integrated Amazon Bedrock Agents into internal workflows to support tool execution and agent coordination.",
   ],
 };
 
@@ -47,14 +47,15 @@ const gh = (repo: string): ProjectLink => ({ label: "GitHub", href: `https://git
 export const projects: Project[] = [
   {
     name: "Phigon",
-    kind: "Agent Monitoring & Evaluation Platform",
+    kind: "Agent Observability & Evaluation Platform",
     period: "Sep 2026 – Present",
-    summary: "A platform for seeing how AI agents work, finding failures, and measuring whether changes make them more reliable.",
+    summary: "Building a platform to inspect AI agent execution, understand failures, and evaluate workflow reliability.",
     points: [
-      "Tracks tool calls, execution traces, and outcomes across agent workflows.",
-      "Runs evaluations and feeds the results back into development.",
+      "Captures tool calls, execution traces, and workflow outcomes.",
+      "Provides evaluation workflows to identify regressions and track agent performance.",
+      "Helps developers understand where an agent succeeds, fails, or behaves unexpectedly.",
     ],
-    tags: ["Observability", "Evals", "Agents"],
+    tags: ["Agent Observability", "Evaluations", "Execution Tracing"],
     links: [{ label: "phigon.online", href: "https://phigon.online" }],
     featured: true,
   },
@@ -62,38 +63,41 @@ export const projects: Project[] = [
     name: "Cortex",
     kind: "Windows Desktop AI Agent",
     period: "Apr 2026 – Present",
-    summary: "A Windows desktop agent that turns plain language requests into actions on the computer, with controls you can follow.",
+    summary: "A desktop AI agent that translates natural-language instructions into actions across a Windows environment.",
     points: [
-      "Plans tasks and uses system tools to carry them out.",
-      "Shows each step as it runs, with logs and user controls.",
+      "Plans and executes tasks through system-level tools.",
+      "Provides step-by-step execution visibility, logs, and user controls.",
+      "Connects language-model reasoning with practical desktop automation.",
     ],
-    tags: ["Desktop", "LLM", "Tool use"],
+    tags: ["Desktop Automation", "LLMs", "Tool Use"],
     links: [{ label: "cortexpro.info", href: "https://cortexpro.info" }],
     featured: true,
   },
   {
     name: "AstraOS",
-    kind: "x86_64 hobby operating system",
+    kind: "x86_64 Hobby Operating System",
     summary:
-      "A hobby operating system kernel built in C for x86_64, from boot to memory management and hardware interrupts.",
+      "A C-based operating system kernel developed for x86_64, exploring the fundamentals of low-level systems programming.",
     points: [
-      "Sets up paging, physical allocation, and a heap for kernel memory.",
-      "Handles CPU exceptions and hardware interrupts through the PIC.",
+      "Implements paging, physical memory allocation, and kernel heap management.",
+      "Handles CPU exceptions and hardware interrupts.",
+      "Built around the Limine boot protocol.",
     ],
-    tags: ["C", "Kernel", "x86_64", "Limine"],
+    tags: ["C", "Operating Systems", "x86_64", "Limine"],
     links: [gh("os-kernel")],
     featured: true,
   },
   {
     name: "Quantum Drug Discovery",
-    kind: "Hybrid Quantum Neural Network (HQNN)",
+    kind: "Hybrid Quantum Neural Network",
     summary:
-      "A drug discovery platform that uses a hybrid quantum neural network to predict molecule properties and explore new candidates.",
+      "Exploring hybrid quantum-classical machine learning for molecular property prediction and drug discovery.",
     points: [
-      "Compares quantum and classical predictions side by side.",
-      "Connects molecule design, docking, and AI guided research with spending controls.",
+      "Compares quantum and classical model predictions.",
+      "Integrates molecular processing, docking, and AI-assisted candidate exploration.",
+      "Combines RDKit, FastAPI, and AWS in the application workflow.",
     ],
-    tags: ["HQNN", "RDKit", "FastAPI", "AWS"],
+    tags: ["Quantum ML", "RDKit", "FastAPI", "AWS"],
     links: [gh("hqnn")],
     featured: true,
   },
@@ -101,10 +105,10 @@ export const projects: Project[] = [
 
 export const skills = [
   { group: "Languages", items: ["Python", "Java", "JavaScript", "TypeScript"] },
-  { group: "AI / ML", items: ["PyTorch", "scikit-learn", "Pandas", "OCR", "RAG"] },
-  { group: "AI Engineering", items: ["OpenAI SDK/API", "AWS", "Amazon Bedrock", "AI Agents"] },
-  { group: "Backend", items: ["FastAPI", "Node.js", "REST APIs"] },
-  { group: "Tools", items: ["Git", "Docker", "Linux"] },
+  { group: "AI / Machine Learning", items: ["PyTorch", "Scikit-learn", "Pandas", "OCR", "RAG"] },
+  { group: "Agent Engineering", items: ["OpenAI SDK", "Amazon Bedrock", "Agent Orchestration", "Tool Calling"] },
+  { group: "Backend & Cloud", items: ["FastAPI", "Node.js", "REST APIs", "AWS"] },
+  { group: "Developer Tools", items: ["Git", "Docker", "Linux"] },
 ];
 
 export const education = {
@@ -116,11 +120,11 @@ export const education = {
 };
 
 export const leadership = {
-  org: "IEEE Computer Society (CIS), BMSITM",
+  org: "IEEE Computer Society, BMSITM",
   role: "Core Team Member",
   period: "2024 – Present",
   points: [
-    "Organized technical events, workshops and hackathons for the student community.",
-    "Contributed to web development tracks and mentored peers on full-stack development.",
+    "Help organize technical events, workshops, and hackathons for the student community.",
+    "Contribute to development activities and support peers in full-stack projects.",
   ],
 };

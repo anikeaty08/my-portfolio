@@ -3,7 +3,7 @@ import { Section } from "./Section";
 
 export function Skills() {
   return (
-    <Section id="skills" eyebrow="03 — Toolkit" title="Technical skills">
+    <Section id="skills" eyebrow="03 — Toolkit" title="Technical toolkit">
       <dl className="divide-y divide-border rounded-2xl border border-border bg-card">
         {skills.map((s) => (
           <div key={s.group} data-reveal className="grid gap-3 p-5 sm:grid-cols-[12rem_1fr] sm:items-center sm:p-6">
