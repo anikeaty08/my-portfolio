@@ -25,7 +25,7 @@ export function Nav({ onWrite: _onWrite, activeHash, isArticle }: { onWrite: () 
     <header className={`reference-header${isArticle ? " article-nav" : ""}`}>
       <nav className="reference-nav" aria-label="Primary">
         <div className="nav-location"><time>{time || "--:--:--"}</time><span>Bangalore, India</span></div>
-        <div className="nav-links">{links.map((link) => <a key={link.href} href={link.href} aria-current={!isArticle && (activeHash === link.href || (!activeHash && link.href === "#top")) ? "page" : undefined}>{link.label}</a>)}</div>
+        <div className="nav-links">{links.map((link) => <a key={link.href} href={isArticle ? `/${link.href}` : link.href} aria-current={!isArticle && (activeHash === link.href || (!activeHash && link.href === "#top")) ? "page" : undefined}>{link.label}</a>)}</div>
         <div className="nav-social">
           <a href={profile.linkedin} target="_blank" rel="noreferrer" aria-label="LinkedIn"><span className="social-letters">in</span></a>
           <a href={profile.github} target="_blank" rel="noreferrer" aria-label="GitHub"><span className="social-letters">gh</span></a>
@@ -33,7 +33,7 @@ export function Nav({ onWrite: _onWrite, activeHash, isArticle }: { onWrite: () 
         </div>
         <button className="nav-menu-button" type="button" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen((value) => !value)}>{open ? <X size={23} /> : <Menu size={23} />}</button>
       </nav>
-      {open && <div className="mobile-menu">{links.map((link) => <a key={link.href} href={link.href} onClick={() => setOpen(false)}>{link.label}</a>)}</div>}
+      {open && <div className="mobile-menu">{links.map((link) => <a key={link.href} href={isArticle ? `/${link.href}` : link.href} onClick={() => setOpen(false)}>{link.label}</a>)}</div>}
     </header>
   );
 }

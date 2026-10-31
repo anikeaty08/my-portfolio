@@ -10,13 +10,20 @@ export function useHash() {
   return useSyncExternalStore(subscribe, () => location.hash, () => "");
 }
 
-/** `#/article/<id>` opens an article page. Anything else is the home page. */
+/** Legacy hash links and browser-only drafts still open an article page. */
 export function articleIdFromHash(hash: string) {
   const m = /^#\/article\/([\w-]+)/.exec(hash);
   return m ? m[1] : null;
 }
 
-export const articleHref = (id: string) => `#/article/${id}`;
+/** Published articles use real paths so crawlers can read their metadata. */
+export function articleIdFromPath(pathname: string) {
+  const m = /^\/article\/([\w-]+)\/?$/.exec(pathname);
+  return m ? m[1] : null;
+}
+
+export const articleHref = (id: string) =>
+  id === "rag-complete-guide" ? "/article/rag-complete-guide/" : `/#/article/${id}`;
 
 /** Scrolls to an element, retrying briefly because lazy sections may not be mounted yet. */
 export function scrollToId(id: string, tries = 20) {

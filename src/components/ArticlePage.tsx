@@ -66,7 +66,7 @@ export default function ArticlePage({ id }: { id: string }) {
       <main className="mx-auto max-w-2xl px-4 pb-24 pt-40 text-center">
         <h1 className="text-3xl font-semibold">Article not found</h1>
         <p className="mt-3 text-muted">It may have been deleted, or it was saved in a different browser.</p>
-        <a href="#writing" className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl border border-border px-5 hover:border-accent">
+        <a href="/#writing" className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl border border-border px-5 hover:border-accent">
           <ArrowLeft size={16} aria-hidden /> Back to writing
         </a>
       </main>
@@ -77,7 +77,7 @@ export default function ArticlePage({ id }: { id: string }) {
       <motion.div aria-hidden style={{ scaleX: progress }} className="fixed inset-x-0 top-0 z-[60] h-1 origin-left bg-brand" />
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <a href="#writing" className="inline-flex h-11 items-center gap-2 text-sm text-muted transition hover:text-fg">
+        <a href="/#writing" className="inline-flex h-11 items-center gap-2 text-sm text-muted transition hover:text-fg">
           <ArrowLeft size={16} aria-hidden /> Back to writing
         </a>
 
@@ -171,7 +171,7 @@ export default function ArticlePage({ id }: { id: string }) {
                 onClick={() => {
                   removeArticle(article.id);
                   toast("Article deleted");
-                  location.hash = "#writing";
+                  location.href = "/#writing";
                 }}
                 className="h-11 rounded-xl bg-red-500 px-5 text-sm font-medium text-white hover:bg-red-600"
               >

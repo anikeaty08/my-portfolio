@@ -7,7 +7,7 @@ import { Projects } from "./components/Projects";
 import { Skills } from "./components/Skills";
 import { OwnerDialog } from "./components/OwnerDialog";
 import { useIsOwner } from "./lib/owner";
-import { articleIdFromHash, scrollToId, useHash } from "./lib/route";
+import { articleHref, articleIdFromHash, articleIdFromPath, scrollToId, useHash } from "./lib/route";
 
 // Below-the-fold, article and owner-only code is split out of the first load.
 const Writing = lazy(() => import("./components/Writing"));
@@ -28,20 +28,26 @@ function SectionSkeleton() {
 export default function App() {
   const isOwner = useIsOwner();
   const hash = useHash();
-  const articleId = articleIdFromHash(hash);
+  const pathArticleId = articleIdFromPath(window.location.pathname);
+  const hashArticleId = articleIdFromHash(hash);
+  const articleId = pathArticleId ?? hashArticleId;
   const [writing, setWriting] = useState(false);
   const [signIn, setSignIn] = useState(false);
 
   // A hash like #/article/<id> is a page; a plain hash like #projects scrolls to that section.
   useEffect(() => {
+    if (!pathArticleId && hashArticleId === "rag-complete-guide") {
+      window.location.replace(articleHref(hashArticleId));
+      return;
+    }
     if (articleId) window.scrollTo(0, 0);
     else if (hash.length > 1 && !hash.startsWith("#/")) scrollToId(hash.slice(1));
-  }, [articleId, hash]);
+  }, [articleId, hash, hashArticleId, pathArticleId]);
 
   return (
     <>
       <a
-        href={articleId ? "#writing" : "#experience"}
+        href={articleId ? "/#writing" : "#experience"}
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-accent-ink"
       >
         {articleId ? "Back to the portfolio" : "Skip to content"}
