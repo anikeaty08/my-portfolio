@@ -16,7 +16,7 @@ export const experience = {
   company: "Klar Data Labs",
   role: "AI Agent Engineer Intern",
   place: "Bengaluru, India",
-  period: "Apr 2026 – Oct 2026",
+  period: "Jul 2026 – Present",
   points: [
     "Developed internal AI automation workflows involving document preprocessing, OCR, and vision-based extraction.",
     "Built multi-step agent workflows using the OpenAI SDK, integrating tools and structured execution paths.",
