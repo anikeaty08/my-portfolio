@@ -6,9 +6,9 @@ import ragBody from "./rag-article.md?raw";
 export const staticArticles: Article[] = [
   {
     id: "rag-complete-guide",
-    title: "The source was real. The policy was wrong.",
+    title: "The page was real. The rule was out of date.",
     summary:
-      "An archived policy made a model say yes. The current one made it say no—and still produced unsupported advice. Follow the evidence through the fixes, then see when graphs and agents actually help.",
+      "A student asks about re-evaluating their marks. An archived rule says yes; the current rule says no. Learn RAG from scratch with one running example, real traces, simple math and hand-drawn diagrams, and see when graphs and agents actually help.",
     tags: ["RAG", "Case study", "Graph RAG", "Agentic RAG", "Web search"],
     body: ragBody,
     createdAt: "2026-10-16T09:00:00.000Z",

@@ -20,22 +20,21 @@ class Policy:
 
 
 POLICIES = (
-    Policy("billing/refunds-2024.md", "Annual plans can be refunded within 60 days of purchase.", False),
-    Policy("billing/refunds.md", "Annual plans can be refunded within 30 days of purchase.", True),
-    Policy("billing/monthly.md", "Monthly plans may be cancelled any time but are not refunded.", True),
+    Policy("exams/revaluation-2024.md", "Students can apply for re-evaluation within 30 days of result declaration.", False),
+    Policy("exams/revaluation.md", "Students can apply for re-evaluation within 15 days of result declaration.", True),
+    Policy("exams/supplementary.md", "Supplementary exams are held in July for students who failed a subject.", True),
 )
 
-DIRECT = "Can I get a refund on my yearly plan after 45 days?"
-PARAPHRASE = "Will they return the payment for my year-long subscription after six weeks?"
-UNKNOWN = "Do you support Kubernetes deployments?"
+DIRECT = "Can I apply for re-evaluation of my marks 20 days after the result?"
+PARAPHRASE = "Can I get my paper checked again if I ask three weeks after the result?"
+UNKNOWN = "Does the college offer hostel rooms?"
 
 
 def rewrite(question: str) -> str:
     """Three transparent example rules, not a general semantic retriever."""
     return (question.lower()
-            .replace("return the payment", "refund")
-            .replace("year-long", "annual")
-            .replace("six weeks", "42 days"))
+            .replace("get my paper checked again", "apply for re-evaluation")
+            .replace("three weeks", "21 days"))
 
 
 def rank(question: str, *, current_only: bool, rewrite_question: bool = False):
