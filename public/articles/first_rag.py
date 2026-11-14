@@ -14,15 +14,15 @@ from urllib.request import Request, urlopen
 
 
 DOCUMENTS = [
-    ("billing/refunds.md", "Annual plans can be refunded within 30 days of purchase."),
-    ("billing/monthly.md", "Monthly plans may be cancelled any time but are not refunded."),
-    ("support/hours.md", "Support is available Monday to Friday, 9am to 6pm IST."),
+    ("exams/revaluation.md", "Students can apply for re-evaluation within 15 days of result declaration."),
+    ("exams/supplementary.md", "Supplementary exams are held in July for students who failed a subject."),
+    ("office/hours.md", "The exam office is open Monday to Friday, 10am to 4pm."),
 ]
 
-ALIASES = {"yearly": "annual", "subscription": "plan", "plans": "plan",
-           "refunded": "refund", "refunds": "refund", "days": "day"}
-STOP_WORDS = {"a", "after", "at", "be", "can", "do", "get", "i", "is", "my",
-              "of", "on", "the", "to", "within", "you"}
+ALIASES = {"results": "result", "days": "day", "marks": "mark", "students": "student",
+           "exams": "exam", "evaluation": "revaluation"}
+STOP_WORDS = {"a", "after", "at", "be", "can", "do", "for", "get", "i", "in", "is",
+              "my", "of", "on", "the", "to", "within", "you"}
 
 
 def terms(text: str) -> set[str]:
@@ -56,7 +56,7 @@ def ask_ollama(prompt: str, model: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="See one question move through a tiny RAG")
-    parser.add_argument("--question", default="Can I get a refund on my yearly plan after 45 days?")
+    parser.add_argument("--question", default="Can I apply for re-evaluation of my marks 20 days after the result?")
     parser.add_argument("--generate", action="store_true", help="ask a local Ollama model")
     parser.add_argument("--model", default="gemma3:1b")
     args = parser.parse_args()

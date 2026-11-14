@@ -64,7 +64,20 @@ const CALLOUTS: Record<string, { Icon: LucideIcon; tone: string; chip: string }>
   check: { Icon: CheckCircle2, tone: "border-emerald-400/40 bg-emerald-400/10", chip: "bg-emerald-400/25" },
   careful: { Icon: AlertTriangle, tone: "border-rose-400/40 bg-rose-400/10", chip: "bg-rose-400/25" },
   tip: { Icon: Sparkles, tone: "border-amber-400/40 bg-amber-400/10", chip: "bg-amber-400/25" },
+  "worked example": { Icon: Wrench, tone: "border-sky-400/40 bg-sky-400/10", chip: "bg-sky-400/25" },
+  "key takeaway": { Icon: CheckCircle2, tone: "border-emerald-400/40 bg-emerald-400/10", chip: "bg-emerald-400/25" },
+  "quick recap": { Icon: Sparkles, tone: "border-amber-400/40 bg-amber-400/10", chip: "bg-amber-400/25" },
+  "watch out": { Icon: AlertTriangle, tone: "border-rose-400/40 bg-rose-400/10", chip: "bg-rose-400/25" },
 };
+
+/** An equation written in plain Unicode text, shown large so a beginner can read it slowly. */
+function Equation({ text }: { text: string }) {
+  return (
+    <figure className="overflow-x-auto rounded-2xl border border-border bg-surface-2 px-5 py-4">
+      <pre className="mx-auto w-max whitespace-pre font-mono text-base leading-loose text-fg sm:text-lg">{text}</pre>
+    </figure>
+  );
+}
 
 function CodeBlock({ code, lang }: { code: string; lang: string }) {
   const [copied, setCopied] = useState(false);
@@ -131,7 +144,9 @@ export function Markdown({ source }: { source: string }) {
       i++;
       while (i < lines.length && !lines[i].startsWith("```")) code.push(lines[i++]);
       i++;
-      blocks.push(<CodeBlock key={key++} code={code.join("\n")} lang={lang} />);
+      blocks.push(
+        lang === "math" ? <Equation key={key++} text={code.join("\n")} /> : <CodeBlock key={key++} code={code.join("\n")} lang={lang} />,
+      );
     } else if (/^---+\s*$/.test(line)) {
       blocks.push(<hr key={key++} className="border-border" />);
       i++;

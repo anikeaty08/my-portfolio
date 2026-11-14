@@ -62,7 +62,7 @@ def main() -> None:
     cases = (
         ("ARCHIVED POLICY", DIRECT, archived.source, archived.text),
         ("CURRENT POLICY", DIRECT, current.source, current.text),
-        ("REAL SOURCE PASSAGE", "Why is Graph RAG a poor fit for a simple refund-policy lookup?",
+        ("REAL SOURCE PASSAGE", "Why is Graph RAG a poor fit for a simple exam-rule lookup?",
          GRAPH_NOTES_SOURCE, GRAPH_NOTES_EXCERPT),
         ("SOURCE HAS NO ANSWER", "Who approved the company's Graph RAG rollout?",
          GRAPH_NOTES_SOURCE, GRAPH_NOTES_EXCERPT),

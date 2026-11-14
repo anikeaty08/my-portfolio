@@ -4,18 +4,18 @@ from first_rag import build_prompt, search
 
 
 class FirstRagTests(unittest.TestCase):
-    def test_refund_question_finds_the_annual_policy(self):
-        score, source, _ = search("Can I get a refund on my yearly plan after 45 days?")[0]
-        self.assertEqual(source, "billing/refunds.md")
+    def test_marks_question_finds_the_revaluation_rule(self):
+        score, source, _ = search("Can I apply for re-evaluation of my marks 20 days after the result?")[0]
+        self.assertEqual(source, "exams/revaluation.md")
         self.assertGreaterEqual(score, 2)
 
     def test_unrelated_question_has_no_supported_result(self):
-        self.assertLess(search("Do you support Kubernetes deployments?")[0][0], 2)
+        self.assertLess(search("Does the college offer hostel rooms?")[0][0], 2)
 
     def test_prompt_carries_the_selected_source(self):
-        prompt = build_prompt("Refund after 45 days?", "billing/refunds.md", "30 days")
-        self.assertIn("[1] billing/refunds.md", prompt)
-        self.assertIn("30 days", prompt)
+        prompt = build_prompt("Re-evaluation after 20 days?", "exams/revaluation.md", "15 days")
+        self.assertIn("[1] exams/revaluation.md", prompt)
+        self.assertIn("15 days", prompt)
 
 
 if __name__ == "__main__":
