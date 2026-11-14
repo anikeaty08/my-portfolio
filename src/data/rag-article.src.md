@@ -1303,7 +1303,7 @@ The agent handles failure as a first-class case, because real model output is un
 Agents add capability and new ways to fail.
 
 - **Loops.** The agent repeats the same search indefinitely. Use a hard step limit, skip repeated identical calls, and force a change of plan after a failed grade.
-- **Cost and delay.** Each loop is another model call plus a search, so answers take seconds to tens of seconds. Route easy questions to the plain pipeline and send only hard ones into the loop.
+- **Cost and delay.** Each loop is another model call plus one or more searches, so answers take seconds to tens of seconds. Run independent searches in parallel, put them into one step, and route easy questions to the plain pipeline so only hard ones enter the loop.
 - **Tool misuse.** Wrong inputs, risky actions, instructions hidden in tool results. Validate inputs against a schema, give tools the least access they need, and ask a human before anything costly or irreversible.
 - **Compounding errors.** One wrong early fact poisons later steps. Grade evidence along the way, not only the final answer.
 - **Opacity.** Log tool calls, inputs, outputs, source IDs and concise decisions as a trace, so a bad answer can be replayed and explained without exposing hidden reasoning or private data.
@@ -1311,10 +1311,21 @@ Agents add capability and new ways to fail.
 Judging an agent means measuring more than the final text: whether it chose the right tool, how many steps it took, how often it retried, what each answer cost, and whether the answer is supported by the evidence it gathered.
 
 ```math
-time per answer  ≈  (number of steps) × (search time + model time)
+time per answer  ≈  (number of steps) × (search time per step + model time per step)
+
+search time per step  =  the slowest search       if the searches run in parallel
+search time per step  =  all searches added up    if they run one after another
 ```
 
-> **Worked example:** An agent that takes 4 steps, where each step is a 0.3-second search plus a 2.5-second model call, needs about 4 × (0.3 + 2.5) = **11.2 seconds**. A plain pipeline that searches once and answers once needs about 0.3 + 2.5 = **2.8 seconds**. That gap is why you route easy questions to the plain pipeline.
+An agent can ask for several searches in the same step. If those searches do not depend on each other (for example, "search the college rules" and "search the university circular"), the system can run them **in parallel**, and the step only waits for the slowest one. Searches that need an earlier result (search B uses what search A found) cannot be parallel, because they have to wait their turn.
+
+> **Worked example:** Each step, the agent asks for 3 independent searches that take 0.3 seconds each, and then makes a 2.5-second model call. It takes 4 steps.
+>
+> One search after another: 4 × (3 × 0.3 + 2.5) = 4 × 3.4 = **13.6 seconds**.
+> Searches in parallel: 4 × (0.3 + 2.5) = 4 × 2.8 = **11.2 seconds**.
+> A plain pipeline (search once, answer once): 0.3 + 2.5 = **2.8 seconds**.
+>
+> Parallel searching saved 2.4 seconds here, but the 4 model calls still take 4 × 2.5 = 10 seconds, about 90 percent of the total. So the biggest win is **fewer steps**: ask the agent to put all its independent searches into one step. And the gap between 2.8 and 11.2 seconds is still why you route easy questions to the plain pipeline.
 
 Start with the plain pipeline. Look at the failures in the test set, and add agent behaviour only where it fixes a specific one. The best agent is often the smallest that works.
 
