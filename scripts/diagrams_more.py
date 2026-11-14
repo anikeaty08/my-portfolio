@@ -312,8 +312,8 @@ def raptor_tree():
 
 def graph_rag():
     d = Diagram("graph-rag", 1200, 640, "Graph RAG follows links a passage search may miss")
-    d.text(40, 96, "LOCAL QUESTION: Where is the company that Priya's employer supplies?", size=20)
-    names = ["Priya", "Acme", "Zenith", "Pune"]
+    d.text(40, 96, "LOCAL QUESTION: Where is the company that Srushti's employer supplies?", size=20)
+    names = ["Srushti", "Acme", "Zenith", "Pune"]
     edges = ["works at", "supplies", "is in"]
     for i, n in enumerate(names):
         x = 40 + i * 290

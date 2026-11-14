@@ -1200,16 +1200,16 @@ This check would **not** have fixed our archived-rule case by itself. The old pa
 
 ## When the answer needs connections: Graph RAG
 
-Our re-evaluation answer lives in one rule passage. A graph would add work without helping it. Now ask a different kind of question: “Where is the company that Priya's employer supplies?” Suppose one record says **Priya works at Acme**, another says **Acme supplies Zenith**, and a third says **Zenith is in Pune**. No single passage says “Pune” in response to the whole question. The answer comes from following three links.
+Our re-evaluation answer lives in one rule passage. A graph would add work without helping it. Now ask a different kind of question: “Where is the company that Srushti's employer supplies?” Suppose one record says **Srushti works at Acme**, another says **Acme supplies Zenith**, and a third says **Zenith is in Pune**. No single passage says “Pune” in response to the whole question. The answer comes from following three links.
 
 A graph stores those links as connected facts. It can also group related facts and write a short summary for each group. That gives it two useful jobs:
 
-1. **Follow a path.** Find a specific relationship spread across documents, like the Priya → Acme → Zenith → Pune chain. This is a local question.
+1. **Follow a path.** Find a specific relationship spread across documents, like the Srushti → Acme → Zenith → Pune chain. This is a local question.
 2. **Look across a collection.** Ask “What themes appear across 5,000 reports?” Summaries of groups of related facts can help answer a question no individual passage covers. This is a global question.
 
 Those jobs need different retrieval paths. Microsoft's GraphRAG focuses on community summaries for broad questions; a direct graph query can be better for an exact relationship or count. Before building either, test whether ordinary retrieval plus a short follow-up search already answers the real questions you care about.
 
-![Graph RAG follows Priya through Acme and Zenith to Pune for a local answer, or groups report facts into theme summaries for a global answer](/articles/graph-rag.svg)
+![Graph RAG follows Srushti through Acme and Zenith to Pune for a local answer, or groups report facts into theme summaries for a global answer](/articles/graph-rag.svg)
 
 ### How Microsoft's GraphRAG works
 
